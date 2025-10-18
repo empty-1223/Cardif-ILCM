@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 終身規劃師 模擬 (v14 - 完整修復版)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* * ===============================================
+         * 基本設定 & 手機外框
+         * ===============================================
+         */
+        :root {
+            --primary-color: #007aff;
+            --primary-dark: #0056b3;
+            --light-gray: #f4f7f6;
+            --border-color: #e9ecef;
+            --text-dark: #333;
+            --text-light: #888;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+            background: #e9e9e9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding-top: 40px;
+            padding-bottom: 40px;
+            height: 100vh;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: rgba(0,0,0,0.05);
+        }
+
+        .phone-mockup {
+            width: 375px;
+            height: 812px;
+            background: #fff;
+            border: 16px solid #333;
+            border-radius: 40px;
+            box-shadow: 0 19px 38px rgba(0,0,0,0.30), 0 15px 12px rgba(0,0,0,0.22);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .phone-mockup::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 210px;
+            height: 30px;
+            background: #333;
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+            z-index: 10;
+        }
+
+        /* * ===============================================
+         * 螢幕 & 頁面切換邏輯
+         * ===============================================
+         */
+        .screen {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: var(--light-gray);
+        }
+        
+        .page {
+            width: 100%;
+            height: 100%;
+            padding: 40px 18px 80px 18px; /* 預留 80px 給底部導航 */
+            box-sizing: border-box;
+            overflow-y: auto;
+            display: none; /* 預設隱藏 */
+            position: absolute;
+            background-color: var(--light-gray);
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .page.active {
+            display: block;
+        }
+        
+        .page.sub-page {
+            padding-bottom: 40px;
+            z-index: 30;
+            background-color: #ffffff; /* 子頁面用白色背景，感覺更乾淨 */
+        }
+        
+        .page.fullscreen-page {
+            padding: 40px 18px;
+            z-index: 40;
+            display: none; 
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+        }
+        .page.fullscreen-page.active {
+            display: flex; 
+        }
+
+        /* * ===============================================
+         * 子頁面的「返回」按鈕
+         * ===============================================
+         */
+        .back-button {
+            position: absolute;
+            top: 45px;
+            left: 18px;
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--primary-color);
+            cursor: pointer;
+            padding: 8px;
+            margin: -8px;
+            z-index: 35;
+        }
+        .page.sub-page.white-bg .back-button {
+             background-color: #fff; /* 確保在白色背景上也看得到 */
+        }
+
+        /* * ===============================================
+         * AI 聊天懸浮按鈕 (FAB)
+         * ===============================================
+         */
+        .fab {
+            position: absolute;
+            bottom: 90px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            z-index: 15;
+            cursor: pointer;
+            transition: all 0.15s ease-out;
+        }
+        .fab:active {
+            transform: scale(0.95);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .page.sub-page.active ~ .fab,
+        .page.fullscreen-page.active ~ .fab {
+            display: none;
+        }
+
+        /* * ===============================================
+         * 底部導航列
+         * ===============================================
+         */
+        .nav-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 70px;
+            background: #ffffff;
+            border-top: 1px solid #ddd;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding-bottom: 10px;
+            font-size: 10px;
+            color: var(--text-light);
+            z-index: 20;
+        }
+        .page.sub-page.active ~ .nav-bar,
+        .page.fullscreen-page.active ~ .nav-bar {
+            display: none;
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.1s ease-out;
+        }
+        .nav-item span { font-size: 24px; }
+        .nav-item.active { color: var(--primary-color); }
+        .nav-item:active { transform: scale(0.9); }
+
+        /* * ===============================================
+         * 通用卡片 & 標題樣式
+         * ===============================================
+         */
+        .card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #111;
+        }
+        .page-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            color: #000;
+            padding-top: 10px;
+        }
+        .page-title.sub-page-title {
+            padding-top: 45px;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+        
+        .clickable-list-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 4px;
+            margin: 0 -4px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 15px;
+            cursor: pointer;
+            transition: background-color 0.15s ease-out, transform 0.1s ease-out;
+            border-radius: 8px;
+        }
+        .clickable-list-item:last-child { border-bottom: none; }
+        .clickable-list-item:active {
+            background-color: var(--border-color);
+            transform: scale(0.98);
+        }
+        .clickable-list-item .title { display: flex; align-items: center; font-weight: 500; }
+        .clickable-list-item .title span { font-size: 20px; margin-right: 12px; color: var(--primary-color); }
+        .clickable-list-item .value { color: var(--text-light); font-size: 14px; }
+        .clickable-list-item .arrow { font-size: 16px; color: #adb5bd; }
+        
+        .details-link-container { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-color); text-align: right; }
+        .details-link { color: var(--primary-color); text-decoration: none; font-size: 13px; font-weight: 500; transition: opacity 0.1s ease-out; cursor: pointer; }
+        .details-link:active { opacity: 0.6; }
+
+
+        /* * ===============================================
+         * [頁面 1: 首頁] 卡片樣式
+         * ===============================================
+         */
+        .assistant-card { background: #e0f0ff; border: 1px solid #b0d0ff; cursor: pointer; transition: all 0.15s ease-out; }
+        .assistant-card:active { transform: scale(0.98); box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
+        .assistant-card h3 { margin: 0 0 10px 0; color: var(--primary-dark); font-size: 16px; display: flex; align-items: center; }
+        .assistant-card h3 span { font-size: 20px; margin-right: 8px; }
+        .assistant-card p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text-dark); }
+        .assistant-card a { font-weight: bold; color: var(--primary-color); text-decoration: none; }
+        .assistant-card a:active { opacity: 0.6; }
+
+        .premium-value { background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white; text-align: center; padding: 25px 20px; }
+        .premium-value h4 { margin: 0 0 10px 0; font-size: 18px; font-weight: 500; opacity: 0.9; }
+        .premium-value .value { font-size: 36px; font-weight: bold; margin: 0 0 10px 0; line-height: 1; }
+        .premium-value .description { font-size: 13px; line-height: 1.5; opacity: 0.9; }
+
+        .health-score h4 { margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: #333; }
+        .health-item { font-size: 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .status-ok { color: #28a745; font-weight: bold; }
+        .status-warn { color: #fd7e14; font-weight: bold; }
+        .health-item .task-progress { font-weight: bold; color: var(--primary-color); }
+
+        .coverage-dashboard .section-title { margin-bottom: 20px; }
+        .coverage-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .coverage-item { background: #f8f9fa; border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; text-align: center; cursor: pointer; transition: all 0.15s ease-out; }
+        .coverage-item:active { transform: scale(0.95); box-shadow: 0 2px 4px rgba(0,0,0,0.08); background-color: var(--border-color); }
+        .coverage-item .icon { font-size: 28px; margin-bottom: 8px; }
+        .coverage-item .title { font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--text-dark); }
+        .coverage-item .status { font-size: 12px; }
+        .status-good { color: #28a745; } .status-review { color: #fd7e14; } .status-plan { color: var(--primary-color); } .status-urgent { color: #dc3545; }
+
+        .financial-planning { background: #f8f9fa; border: 1px solid var(--border-color); }
+        .financial-planning .section-title { margin-bottom: 0; }
+        .financial-planning .plan-item { padding-left: 0; padding-right: 0; }
+
+        /* * ===============================================
+         * [頁面 2: 健康任務] 樣式
+         * ===============================================
+         */
+        .streak-card { background: linear-gradient(135deg, #ffc107, #fd7e14); color: var(--text-dark); text-align: center; padding: 25px 20px; cursor: pointer; transition: all 0.15s ease-out; }
+        .streak-card:active { transform: scale(0.98); box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
+        .streak-card .icon { font-size: 36px; line-height: 1; }
+        .streak-card h3 { margin: 10px 0 5px 0; font-size: 22px; font-weight: 700; }
+        .streak-card p { margin: 0; font-size: 14px; opacity: 0.9; }
+
+        .task-card { background: #f8f9fa; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+        .task-card.daily { border-left: 5px solid var(--primary-color); }
+        .task-card.weekly { border-left: 5px solid #fd7e14; }
+        .task-card.event { border-left: 5px solid #6f42c1; cursor: pointer; transition: all 0.15s ease-out; }
+        .task-card.event:active { transform: scale(0.98); background-color: #f1f3f5; }
+        .task-card h4 { margin: 0 0 16px 0; font-size: 16px; font-weight: 600; }
+        
+        .task-item { font-size: 14px; margin-bottom: 4px; cursor: pointer; padding: 8px; margin-left: -8px; margin-right: -8px; border-radius: 8px; transition: background-color 0.15s ease-out; }
+        .task-item:active { background-color: var(--border-color); }
+        .task-item:last-child { margin-bottom: 0; }
+        .task-item .progress-bar { width: 100%; height: 8px; background: var(--border-color); border-radius: 4px; margin-top: 5px; overflow: hidden; }
+        .task-item .progress-fill { height: 100%; background: var(--primary-color); border-radius: 4px; }
+
+        .task-rewards h4 { margin: 0 0 12px 0; font-size: 16px; font-weight: 600; }
+        .reward-item { display: flex; align-items: center; font-size: 14px; margin-bottom: 8px; cursor: pointer; padding: 8px; margin-left: -8px; margin-right: -8px; border-radius: 8px; transition: background-color 0.15s ease-out; }
+        .reward-item:active { background-color: var(--border-color); }
+        .reward-item:last-child { margin-bottom: 0; }
+        .reward-item span { font-size: 20px; margin-right: 10px; }
+
+        /* * ===============================================
+         * [頁面 3: 我的保單] 樣式
+         * ===============================================
+         */
+        .policy-summary-card { background: linear-gradient(135deg, #17a2b8, #138496); color: white; text-align: center; }
+        .policy-summary-card h3 { margin: 0 0 8px 0; font-size: 18px; font-weight: 500; opacity: 0.9; }
+        .policy-summary-card .policy-count { font-size: 36px; font-weight: bold; margin-bottom: 8px; line-height: 1; }
+        
+        .policy-category { margin-bottom: 16px; }
+        .policy-category-header { background: #f8f9fa; border: 1px solid var(--border-color); padding: 16px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background-color 0.15s ease-out, transform 0.1s ease-out; }
+        .policy-category-header:active { background-color: var(--border-color); transform: scale(0.985); }
+        .policy-category-header .title { font-size: 16px; font-weight: 600; display: flex; align-items: center; }
+        .policy-category-header .title span { font-size: 22px; margin-right: 10px; }
+        .policy-category-header .status { font-size: 14px; }
+        
+        .policy-gap-card { background: #fffbe6; border: 1px solid #ffeeba; display: flex; align-items: center; padding: 16px; cursor: pointer; transition: all 0.15s ease-out; }
+        .policy-gap-card:active { transform: scale(0.98); background-color: #fff3cd; }
+        .policy-gap-card .icon { font-size: 24px; margin-right: 12px; color: #fd7e14; }
+        .policy-gap-card .text { font-size: 14px; line-height: 1.5; }
+        .policy-gap-card .text strong { color: #000; }
+        .policy-gap-card .text a { color: var(--primary-color); font-weight: 600; text-decoration: none; }
+        .policy-gap-card .text a:active { opacity: 0.6; }
+
+
+        /* * ===============================================
+         * [頁面 4: 設定] 樣式
+         * ===============================================
+         */
+        .settings-group { background: #fff; border-radius: 12px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+        .settings-item { padding-left: 16px; padding-right: 16px; margin: 0; border-radius: 0; }
+        .settings-item .title span { color: var(--text-dark); }
+        .settings-switch-item { display: flex; justify-content: space-between; align-items: center; padding: 16px; font-size: 15px; border-bottom: 1px solid var(--border-color); }
+        .settings-switch-item:last-child { border-bottom: none; }
+        .settings-switch-item .title { display: flex; align-items: center; font-weight: 500; }
+        .settings-switch-item .title span { font-size: 20px; margin-right: 12px; color: var(--text-dark); }
+        .settings-switch-item .description {
+            font-size: 12px;
+            color: var(--text-light);
+            padding-left: 32px; /* 對齊 icon 文字 */
+            margin-top: -8px;
+            padding-bottom: 10px;
+        }
+
+        .switch { position: relative; display: inline-block; width: 50px; height: 28px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; border-radius: 28px; transition: .4s; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; border-radius: 50%; transition: .4s; }
+        input:checked + .slider { background-color: #28a745; }
+        input:checked + .slider:before { transform: translateX(22px); }
+
+        .logout-btn { background: #dc3545; color: white; text-align: center; font-weight: 600; border-radius: 12px; padding: 16px; cursor: pointer; transition: background-color 0.2s, transform 0.1s ease-out; }
+        .logout-btn:active { background: #c82333; transform: scale(0.98); }
+
+        /* * ===============================================
+         * [子頁面] 聊天室樣式
+         * ===============================================
+         */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 80px; /* 為輸入框留空間 */
+            padding-top: 10px;
+        }
+        .chat-bubble { max-width: 80%; padding: 12px 16px; border-radius: 20px; line-height: 1.5; font-size: 15px; margin-bottom: 12px; }
+        .chat-bubble.bot { background-color: var(--border-color); color: #000; align-self: flex-start; border-bottom-left-radius: 4px; }
+        .chat-bubble.user { background-color: var(--primary-color); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+        
+        .chat-input-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 70px; background: #fff; border-top: 1px solid #ddd; display: flex; align-items: center; padding: 10px 15px 25px 15px; box-sizing: border-box; }
+        .chat-input { flex-grow: 1; height: 40px; border: 1px solid #ccc; border-radius: 20px; padding: 0 15px; font-size: 15px; }
+        .chat-send-btn { margin-left: 10px; background: none; border: none; font-size: 24px; color: var(--primary-color); cursor: pointer; }
+        
+        /* * ===============================================
+         * [子頁面] 健康報告 & 圖表
+         * ===============================================
+         */
+         .report-summary-card { background: #e6f7ff; border: 1px solid #91d5ff; text-align: center; }
+         .report-summary-card .score { font-size: 48px; font-weight: 700; color: var(--primary-dark); line-height: 1; }
+         .report-summary-card .score-label { font-size: 16px; font-weight: 600; color: var(--primary-dark); margin-bottom: 15px; }
+         .report-summary-card .description { font-size: 14px; line-height: 1.6; }
+         .chart-container {
+            width: 100%;
+            height: 200px;
+            margin-top: 10px;
+         }
+         .doughnut-chart-container {
+            width: 100%;
+            max-width: 250px;
+            height: 250px;
+            margin: 10px auto 0 auto;
+         }
+
+        /* * ===============================================
+         * [子頁面] 登出頁面
+         * ===============================================
+         */
+        .logout-screen { text-align: center; }
+        .logout-screen .icon { font-size: 64px; }
+        .logout-screen h2 { color: #fff; font-size: 24px; margin: 20px 0; }
+        .logout-screen p { color: #fff; opacity: 0.8; font-size: 16px; margin-bottom: 30px; }
+        .login-again-btn { background: #fff; color: var(--primary-dark); font-weight: 600; border-radius: 12px; padding: 16px 30px; cursor: pointer; transition: all 0.15s ease-out; text-decoration: none; font-size: 16px; }
+        .login-again-btn:active { transform: scale(0.95); }
+
+        /* * ===============================================
+         * [子頁面] FAQ 摺疊樣式
+         * ===============================================
+         */
+        .faq-item {
+            background: #fff;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+            overflow: hidden;
+        }
+        .faq-item-header {
+            padding: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .faq-item-header:active {
+            background-color: var(--border-color);
+        }
+        .faq-item-header::after {
+            content: '+';
+            font-size: 20px;
+            color: var(--primary-color);
+            transition: transform 0.3s ease;
+        }
+        .faq-item.active .faq-item-header::after {
+            transform: rotate(45deg);
+        }
+        .faq-item-body {
+            padding: 0 18px 18px 18px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #555;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+        }
+        .faq-item.active .faq-item-body {
+            max-height: 200px; /* 展開高度 */
+        }
+        
+        /* * ===============================================
+         * [子頁面] 獎品商城
+         * ===============================================
+         */
+        .rewards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .reward-card {
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s ease-out;
+            overflow: hidden;
+        }
+        .reward-card:active { transform: scale(0.96); box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
+        .reward-card .icon { font-size: 48px; margin: 20px 0 10px 0; }
+        .reward-card .title { font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--text-dark); }
+        .reward-card .cost { font-size: 13px; color: var(--primary-color); font-weight: 500; margin-bottom: 15px; }
+
+        /* * ===============================================
+         * [子頁面] 表單樣式 (個人資料等)
+         * ===============================================
+         */
+         .form-group {
+            margin-bottom: 20px;
+         }
+         .form-group label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #555;
+            display: block;
+            margin-bottom: 8px;
+         }
+         .form-group input {
+            width: 100%;
+            height: 44px;
+            padding: 0 15px;
+            font-size: 15px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-sizing: border-box;
+         }
+         .form-button {
+            background: var(--primary-color);
+            color: white;
+            width: 100%;
+            height: 48px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease-out;
+         }
+         .form-button:active {
+            background: var(--primary-dark);
+            transform: scale(0.98);
+         }
+
+    </style>
+</head>
+<body>
+
+    <div class="phone-mockup">
+        
+        <div class="screen">
+
+            <div id="page-home" class="page active">
+                
+                <div class="card assistant-card" data-target="page-chatbot">
+                    <h3><span>🤖</span> AI 助理 小P 關心您</h3>
+                    <p>
+                        王先生，偵測到您下週將前往日本，系統已自動為您試算「海外突發傷病」保障缺口。
+                        <a href="#" data-target="page-coverage-detail" 
+                           data-title="海外突發傷病" 
+                           data-product-name="環球旅平卡 (海外醫療)" 
+                           data-product-icon="✈️">點此查看建議方案 &raquo;
+                        </a>
+                    </p>
+                </div>
+                
+                <div class="main-metrics-container">
+                    <div class="card premium-value">
+                        <h4>我的退休保障金</h4>
+                        <div class="value">$ 3,150</div>
+                        <p class="description">
+                            您本月累積的健康積分，已為您的長照險累計折抵 $3,150 元保費。
+                        </p>
+                    </div>
+
+                    <div class="card health-score">
+                        <h4>即時健康追蹤</h4>
+                        <div class="health-item">
+                            <span>今日步數</span>
+                            <span class="status-ok">8,120 / 8,000 &checkmark;</span>
+                        </div>
+                        <div class="health-item">
+                            <span>昨晚睡眠</span>
+                            <span class="status-warn">6.5 小時 !</span>
+                        </div>
+                        <div class="health-item">
+                            <span>本週有氧任務 (3次)</span>
+                            <span class="task-progress">1 / 3</span>
+                        </div>
+                        <div class="details-link-container">
+                            <a class="details-link" data-target="page-health-report">點我查看詳細健康報告 &raquo;</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card coverage-dashboard">
+                    <div class="section-title">終身保障儀表板</div>
+                    <div class="coverage-grid">
+                        <div class="coverage-item" data-target="page-coverage-detail" 
+                             data-title="基礎醫療" 
+                             data-product-name="實支實付Pro (醫療)" 
+                             data-product-icon="🩺">
+                            <div class="icon">🩺</div>
+                            <div class="title">基礎醫療</div>
+                            <div class="status status-good">保障充足</div>
+                        </div>
+                        <div class="coverage-item" data-target="page-coverage-detail" 
+                             data-title="意外 / 傷殘"
+                             data-product-name="全方位意外險 (傷殘)"
+                             data-product-icon="🩹">
+                            <div class="icon">🩹</div>
+                            <div class="title">意外 / 傷殘</div>
+                            <div class="status status-good">保障充足</div>
+                        </div>
+                        <div class="coverage-item" data-target="page-coverage-detail" 
+                             data-title="家庭責任 (壽險)"
+                             data-product-name="安家30 (壽險)"
+                             data-product-icon="👨‍👩‍👧‍👦">
+                            <div class="icon">👨‍👩‍👧‍👦</div>
+                            <div class="title">家庭責任 (壽險)</div>
+                            <div class="status status-review">建議檢視</div>
+                        </div>
+                        <div class="coverage-item" data-target="page-coverage-detail" 
+                             data-title="重大疾病 / 癌症"
+                             data-product-name="醫靠鍾身 (重疾)"
+                             data-product-icon="❤️">
+                            <div class="icon">❤️</div>
+                            <div class="title">重大疾病 / 癌症</div>
+                            <div class="status status-urgent">保障嚴重不足</div>
+                        </div>
+                        <div class="coverage-item" data-target="page-coverage-detail" 
+                             data-title="退休金流 (理財)"
+                             data-product-name="金富滿堂 (儲蓄)"
+                             data-product-icon="🏖️">
+                            <div class="icon">🏖️</div>
+                            <div class="title">退休金流 (理財)</div>
+                            <div class="status status-plan">尚待規劃</div>
+                        </div>
+                        <div class="coverage-item" data-target="page-coverage-detail" 
+                             data-title="長照 / 傳承"
+                             data-product-name="長照久久 (長照)"
+                             data-product-icon="🏦">
+                            <div class="icon">🏦</div>
+                            <div class="title">長照 / 傳承</div>
+                            <div class="status status-urgent">保障嚴重不足</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card financial-planning">
+                    <div class="section-title">家庭資產配置</div>
+                    <div class="clickable-list-item plan-item" data-target="page-financial-education">
+                        <div class="title"><span>🎓</span> 子女教育金試算</div>
+                        <div class="arrow">&rsaquo;</div>
+                    </div>
+                    <div class="clickable-list-item plan-item" data-target="page-financial-retirement">
+                        <div class="title"><span>🏖️</span> 退休金規劃</div>
+                        <div class="arrow">&rsaquo;</div>
+                    </div>
+                    <div class="clickable-list-item plan-item" data-target="page-financial-investment">
+                        <div class="title"><span>📈</span> 投資組合建議</div>
+                        <div class="arrow">&rsaquo;</div>
+                    </div>
+                </div>
+            </div> 
+            
+            <div id="page-tasks" class="page">
+                <div class="page-title">🎯 健康任務</div>
+                
+                <div class="card streak-card" data-target="page-rewards-store">
+                    <div class="icon">🔥</div>
+                    <h3>連續打卡 5 天</h3>
+                    <p>做得好！繼續保持，朝 7 天目標邁進！</p>
+                </div>
+                <div class="card task-card daily">
+                    <h4>每日任務</h4>
+                    <div class="task-item">
+                        <div>每日 8,000 步 (8,120 / 8,000)</div>
+                        <div class="progress-bar"><div class="progress-fill" style="width: 100%;"></div></div>
+                    </div>
+                    <div class="task-item">
+                        <div>7 小時睡眠 (6.5 / 7)</div>
+                        <div class="progress-bar"><div class="progress-fill" style="width: 90%;"></div></div>
+                    </div>
+                </div>
+                <div class="card task-card event" data-target="page-task-event-detail">
+                    <h4>特別挑戰：十月健走賽</h4>
+                    <div class="task-item">
+                        <div>累積 10 萬步 (35,200 / 100,000)</div>
+                        <div class="progress-bar"><div class="progress-fill" style="width: 35.2%; background-color: #6f42c1;"></div></div>
+                    </div>
+                </div>
+                <div class="card task-card weekly">
+                    <h4>每週挑戰</h4>
+                    <div class="task-item">
+                        <div>3 次 30 分鐘有氧運動 (1/3)</div>
+                        <div class="progress-bar"><div class="progress-fill" style="width: 33.3%; background-color: #fd7e14;"></div></div>
+                    </div>
+                    <div class="task-item">
+                        <div>分享健康餐盤 (0/2)</div>
+                        <div class="progress-bar"><div class="progress-fill" style="width: 0%; background-color: #fd7e14;"></div></div>
+                    </div>
+                </div>
+                <div class="card task-rewards">
+                    <h4>任務獎勵 </h4>
+                    <div class="reward-item" data-target="page-rewards-store"><span>☕</span> 7-11 咖啡券 (尚需 200 積分)</div>
+                    <div class="reward-item" data-target="page-rewards-store"><span>💰</span> $150 元保費折抵金 (已累積)</div>
+                    <div class="details-link-container">
+                        <a class="details-link" data-target="page-rewards-store">查看所有可兌換獎品 &raquo;</a>
+                    </div>
+                </div>
+            </div> 
+
+            <div id="page-policies" class="page">
+                <div class="page-title">📄 我的保單</div>
+                <div class="card policy-summary-card">
+                    <h3>AI 保單管家</h3>
+                    <div class="policy-count">5 份</div>
+                    <p class="description">AI 已自動為您整合所有保單</p>
+                </div>
+                <div class="card policy-gap-card" data-target="page-coverage-detail" data-title="重大疾病 / 癌症" data-product-name="醫靠鍾身 (重疾)" data-product-icon="❤️">
+                    <div class="icon">💡</div>
+                    <div class="text">
+                        <strong>AI 發現保障缺口：</strong>
+                        您的「重大疾病」與「長照」保障嚴重不足。
+                        <a href="#" data-target="page-coverage-detail" data-title="重大疾病 / 癌症" data-product-name="醫靠鍾身 (重疾)" data-product-icon="❤️">點此查看 AI 建議 &raquo;</a>
+                    </div>
+                </div>
+                <div class="section-title">依保障目的分類</div>
+                <div class="policy-category"><div class="policy-category-header" data-target="page-policy-list" data-title="基礎醫療"><div class="title"><span>🩺</span> 基礎醫療</div><div class="status status-good">2 份 (充足)</div></div></div>
+                <div class="policy-category"><div class="policy-category-header" data-target="page-policy-list" data-title="意外 / 傷殘"><div class="title"><span>🩹</span> 意外 / 傷殘</div><div class="status status-good">1 份 (充足)</div></div></div>
+                <div class="policy-category"><div class="policy-category-header" data-target="page-policy-list" data-title="家庭責任 (壽險)"><div class="title"><span>👨‍👩‍👧‍👦</span> 家庭責任 (壽險)</div><div class="status status-review">2 份 (建議檢視)</div></div></div>
+                <div class="policy-category"><div class="policy-category-header" data-target="page-policy-list" data-title="重大疾病 / 癌症"><div class="title"><span>❤️</span> 重大疾病 / 癌症</div><div class="status status-urgent">0 份 (嚴重不足)</div></div></div>
+                <div class="policy-category"><div class="policy-category-header" data-target="page-policy-list" data-title="長照 / 傳承"><div class="title"><span>🏦</span> 長照 / 傳承</div><div class="status status-urgent">0 份 (嚴重不足)</div></div></div>
+            </div> 
+
+            <div id="page-settings" class="page">
+                <div class="page-title">⚙️ 設定</div>
+                <div class="section-title">帳戶</div>
+                <div class="settings-group">
+                    <div class="clickable-list-item settings-item" data-target="page-settings-profile">
+                        <div class="title"><span>👤</span> 個人資料</div><div class="arrow">&rsaquo;</div>
+					</div>
+
+                    <div class="clickable-list-item settings-item" data-target="page-settings-family">
+                        <div class="title"><span>👨‍👩‍👧‍👦</span> 家庭成員管理</div><div class="arrow">&rsaquo;</div>
+                    </div>
+
+                    <div class="clickable-list-item settings-item" data-target="page-settings-security">
+                        <div class="title"><span>🔒</span> 密碼與安全性</div><div class="arrow">&rsaquo;</div>
+                    </div>
+                </div>
+
+
+
+                <div class="section-title">資料與上傳</div>
+                <div class="settings-group">
+                    <div class="settings-switch-item">
+                        <div class="title"><span>❤️</span> Apple 健康</div>
+                        <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+                    </div>
+
+                    <div class="settings-switch-item">
+                        <div class="title"><span>⌚</span> Garmin Connect</div>
+                        <label class="switch"><input type="checkbox"><span class="slider"></span></label>
+                    </div>
+
+                    <div class="clickable-list-item settings-item" data-target="page-settings-data">
+                        <div class="title"><span>🏥</span> 健保資料 (健康存摺)</div><div class="value">已連結</div>
+                    </div>
+
+                    <div class="clickable-list-item settings-item" data-target="page-settings-upload">
+                        <div class="title"><span>📤</span> 保單上傳 (PDF/JPG)</div>
+                        <div class="arrow">&rsaquo;</div>
+                    </div>
+                </div>
+
+                <div class="section-title">支援服務</div>
+                <div class="settings-group">
+					<div class="clickable-list-item settings-item" data-target="page-chatbot">
+                        <div class="title"><span>🤖</span> AI 助理 小P</div>
+                        <div class="arrow">&rsaquo;</div>
+                    </div>
+
+                    <div class="clickable-list-item settings-item" data-target="page-support-chat">
+                        <div class="title"><span>💬</span> 聯繫真人客服</div>
+                        <div class="arrow">&rsaquo;</div>
+                    </div>
+
+                    <div class="clickable-list-item settings-item" data-target="page-settings-faq">
+                        <div class="title"><span>❓</span> 常見問題 (FAQ)</div>
+                        <div class="arrow">&rsaquo;</div>
+                    </div>
+                </div>
+
+                <div class="section-title">應用程式</div>
+                <div class="settings-group">
+                    <div class="clickable-list-item settings-item" data-target="page-settings-notifications">
+                        <div class="title"><span>🔔</span> 通知設定</div>
+                        <div class="arrow">&rsaquo;</div>
+                    </div>
+
+                    <div class="clickable-list-item settings-item" data-target="page-settings-privacy">
+                        <div class="title"><span>🛡️</span> 隱私權與資料分享</div>
+                        <div class="arrow">&rsaquo;</div>
+                    </div>
+                </div>
+                <div class="logout-btn" data-target="page-logout">登出</div>
+            </div> 
+            
+            <div id="page-chatbot" class="page sub-page">
+                <div class="back-button" data-target="page-home">&lsaquo; 返回</div>
+                <div class="page-title sub-page-title">🤖 AI 助理 小P</div>
+                <div class="chat-container">
+                    <div class="chat-bubble bot">您好，王先生！我是您的 AI 終身規劃師，有什麼可以協助您的嗎？</div>
+                    <div class="chat-bubble bot">您可以問我「我的長照保障夠嗎？」或「幫我規劃子女教育金」。</div>
+                    <div class="chat-bubble user">我的長照保障夠嗎？</div>
+                    <div class="chat-bubble bot">正在為您分析... 根據您上傳的 5 份保單，您目前在「長照保障」項目有 0 元的額度，保障嚴重不足。</div>
+                    <div class="chat-bubble bot">AI 建議您參考「長照久久」方案，它能與您的健康積分連動，最高可折抵 30% 保費。</div>
+                </div>
+                <div class="chat-input-bar"><input type="text" class="chat-input" placeholder="輸入訊息..."><button class="chat-send-btn">➤</button></div>
+            </div>
+            
+            <div id="page-support-chat" class="page sub-page">
+                <div class="back-button" data-target="page-settings">&lsaquo; 返回設定</div>
+                <div class="page-title sub-page-title">💬 真人客服</div>
+                <div class="chat-container">
+                    <div class="chat-bubble bot">您好，真人客服專員 089 號很高興為您服務。</div>
+                    <div class="chat-bubble user">我想詢問有關保單上傳的隱私權問題。</div>
+                </div>
+                <div class="chat-input-bar"><input type="text" class="chat-input" placeholder="輸入訊息..."><button class="chat-send-btn">➤</button></div>
+            </div>
+            
+            <div id="page-health-report" class="page sub-page white-bg">
+                <div class="back-button" data-target="page-home">&lsaquo; 返回首頁</div>
+                <div class="page-title sub-page-title">詳細健康報告</div>
+                
+                <div class="card report-summary-card">
+                    <div class="score">82</div>
+                    <div class="score-label">您的健康總分</div>
+                    <p class="description">
+                        AI 分析：您的步數和有氧運動表現良好，但「睡眠品質」是近期需要注意的主要風險因子。
+                    </p>
+                </div>
+                <div class="card">
+                    <div class="section-title">睡眠分析 (近 7 天)</div>
+                    <div class="chart-container">
+                        <canvas id="sleepChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="section-title">步數分析 (近 30 天)</div>
+                    <div class="chart-container">
+                        <canvas id="stepsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="page-coverage-detail" class="page sub-page white-bg">
+                <div class="back-button" data-target="page-home">&lsaquo; 返回首頁</div>
+                <div id="coverage-detail-title" class="page-title sub-page-title">保障缺口分析</div>
+                
+                <div class="card policy-gap-card">
+                    <div class="icon">💡</div>
+                    <div class="text">
+                        <strong id="coverage-gap-text">AI 發現「重大疾病」保障嚴重不足：</strong>
+                        根據您的年齡 (42) 與家庭責任，AI 建議您至少需要 200 萬的保障額度。
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="section-title">目前保障額度</div>
+                    <div class="doughnut-chart-container">
+                        <canvas id="coverageChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="section-title">AI 建議方案</div>
+                    <div class="clickable-list-item plan-item">
+                        <div class="title">
+                            <span id="reco-product-icon">🛡️</span> 
+                            <span id="reco-product-name">巴黎人壽「醫靠鍾身」方案</span>
+                        </div>
+                        <div class="arrow">&rsaquo;</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-rewards-store" class="page sub-page">
+                <div class="back-button" data-target="page-tasks">&lsaquo; 返回任務</div>
+                <div class="page-title sub-page-title">🎁 獎品商城</div>
+                <div class="rewards-grid">
+                    <div class="reward-card"><div class="icon">☕</div><div class="title">7-11 咖啡券</div><div class="cost">500 積分</div></div>
+                    <div class="reward-card"><div class="icon">💰</div><div class="title">$50 保費折抵</div><div class="cost">1000 積分</div></div>
+                    <div class="reward-card"><div class="icon">🏋️</div><div class="title">健身房體驗券</div><div class="cost">1500 積分</div></div>
+                    <div class="reward-card"><div class="icon">🍎</div><div class="title">健康餐盒</div><div class="cost">1200 積分</div></div>
+                </div>
+            </div>
+
+            <div id="page-task-event-detail" class="page sub-page white-bg">
+                <div class="back-button" data-target="page-tasks">&lsaquo; 返回任務</div>
+                <div class="page-title sub-page-title">十月健走挑戰賽</div>
+                <div class="card"><p>與全體會員一起挑戰本月累積 10 萬步！達成目標即可獲得 500 積分，並有機會抽中 Apple Watch。</p></div>
+            </div>
+
+            <div id="page-policy-list" class="page sub-page white-bg">
+                <div class="back-button" data-target="page-policies">&lsaquo; 返回保單</div>
+                <div id="policy-list-title" class="page-title sub-page-title">保單列表</div>
+                <div class="settings-group" id="policy-list-container"></div>
+            </div>
+            
+            <div id="page-financial-education" class="page sub-page white-bg"><div class="back-button" data-target="page-home">&lsaquo; 返回首頁</div><div class="page-title sub-page-title">🎓 子女教育金試算</div><div class="card"><p>AI 正在根據您目前的收入與支出，為您試算子女教育金缺口...</p></div></div>
+            <div id="page-financial-retirement" class="page sub-page white-bg"><div class="back-button" data-target="page-home">&lsaquo; 返回首頁</div><div class="page-title sub-page-title">🏖️ 退休金規劃</div><div class="card"><p>AI 正在為您規劃退休金...</p></div></div>
+            <div id="page-financial-investment" class="page sub-page white-bg"><div class="back-button" data-target="page-home">&lsaquo; 返回首頁</div><div class="page-title sub-page-title">📈 投資組合建議</div><div class="card"><p>AI 正在分析您的風險屬性，並提供投資建議...</p></div></div>
+
+            <div id="page-settings-profile" class="page sub-page white-bg">
+                <div class="back-button" data-target="page-settings">&lsaquo; 返回設定</div><div class="page-title sub-page-title">👤 個人資料</div>
+                <div class="card">
+                    <div class="form-group"><label>姓名</label><input type="text" value="王先生"></div>
+                    <div class="form-group"><label>Email</label><input type="email" value="demo@email.com"></div>
+                    <button class="form-button">儲存變更</button>
+                </div>
+                <div class="section-title" style="margin-top: 30px;">財務資料</div>
+                <div class="settings-group">
+                    <div class="clickable-list-item settings-item" data-target="page-mock-bank-detail">
+                        <div class="title"><span>🏦</span> 玉山銀行 (E.SUN)</div>
+                        <div class="value">•••• 1234</div>
+                    </div>
+                    <div class="clickable-list-item settings-item" data-target="page-mock-bank-detail-cc">
+                        <div class="title"><span>💳</span> 信用卡 (VISA)</div>
+                        <div class="value">•••• 5678</div>
+                    </div>
+                    <div class="clickable-list-item settings-item" data-target="page-mock-bank-add" style="color: var(--primary-color); font-weight: 500;">
+                        <div class="title"><span>+</span> 新增銀行帳戶</div>
+                        <div class="arrow">&rsaquo;</div>
+                    </div>
+                </div>
+            </div>
+            <div id="page-settings-family" class="page sub-page white-bg"><div class="back-button" data-target="page-settings">&lsaquo; 返回設定</div><div class="page-title sub-page-title">👨‍👩‍👧‍👦 家庭成員管理</div><div class="card"><p>您可以在此新增家庭成員 (配偶、子女)，讓 AI 為您進行更完整的家庭保障分析。</p><button class="form-button" style="margin-top: 20px;">+ 新增成員</button></div></div>
+            <div id="page-settings-security" class="page sub-page white-bg"><div class="back-button" data-target="page-settings">&lsaquo; 返回設定</div><div class="page-title sub-page-title">🔒 密碼與安全性</div><div class="card"><div class="clickable-list-item settings-item"><div class="title">變更密碼</div><div class="arrow">&rsaquo;</div></div><div class="clickable-list-item settings-item"><div class="title">雙重驗證 (2FA)</div><div class="value">已啟用</div></div></div></div>
+            <div id="page-settings-data" class="page sub-page white-bg"><div class="back-button" data-target="page-settings">&lsaquo; 返回設定</div><div class="page-title sub-page-title">🏥 健保資料</div><div class="card"><p>您的健保資料 (健康存摺) 已於 2025/10/01 成功連結。AI 將定期同步您的就醫紀錄，以提供更精準的健康分析。</p></div></div>
+            <div id="page-settings-upload" class="page sub-page white-bg"><div class="back-button" data-target="page-settings">&lsaquo; 返回設定</div><div class="page-title sub-page-title">📤 保單上傳</div><div class="card"><p>請上傳您在其他保險公司的保單 (PDF 或 JPG)，AI 保單管家將自動為您彙整。</p><button class="form-button" style="margin-top: 20px;">點此上傳檔案</button></div></div>
+            <div id="page-settings-faq" class="page sub-page white-bg">
+                <div class="back-button" data-target="page-settings">&lsaquo; 返回設定</div><div class="page-title sub-page-title">❓ 常見問題 (FAQ)</div>
+                <div class="faq-item active"><div class="faq-item-header">AI 如何保護我的隱私？</div><div class="faq-item-body">您的所有資料均經過加密儲存...</div></div>
+                <div class="faq-item"><div class="faq-item-header">健康積分如何計算？</div><div class="faq-item-body">健康積分是...</div></div>
+            </div>
+
+            <div id="page-settings-notifications" class="page sub-page white-bg">
+                <div class="back-button" data-target="page-settings">&lsaquo; 返回設定</div>
+                <div class="page-title sub-page-title">🔔 通知設定</div>
+                <div class="settings-group"><div class="settings-switch-item">
+                    <div class="title">AI 主動提醒</div><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></div>
+                    <div class="settings-switch-item">
+                        <div class="title">健康任務通知</div>
+                        <label class="switch">
+                            <input type="checkbox" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="page-settings-privacy" class="page sub-page white-bg">
+                <div class="back-button" data-target="page-settings">&lsaquo; 返回設定</div>
+                <div class="page-title sub-page-title">🛡️ 隱私權與資料分享</div>
+                
+                <div class="section-title" style="padding-top: 10px;">健康數據分享</div>
+                <div class="settings-group">
+                    <div class="settings-switch-item">
+                        <div class="title"><span>❤️</span> Apple 健康 (步數、睡眠)</div>
+                        <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+                    </div>
+                    <div class="settings-switch-item" style="display: block; border-bottom: none;"> <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div class="title"><span>⌚</span> Garmin Connect (心率)</div>
+                            <label class="switch"><input type="checkbox"><span class="slider"></span></label>
+                         </div><br>
+                         <div class="description">分享健康數據以獲得健康積分與保費折抵 </div>
+                    </div>
+                </div>
+                
+                <div class="section-title">財務數據分享</div>
+                <div class="settings-group">
+                    <div class="settings-switch-item" style="display: block; border-bottom: none;"> <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div class="title"><span>🏦</span> 銀行帳戶連結 (收入支出)</div>
+                            <label class="switch"><input type="checkbox"><span class="slider"></span></label>
+                         </div><br>
+                         <div class="description">分享財務數據以獲得 AI 退休金與資產配置建議</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="page-mock-bank-detail" class="page sub-page white-bg">
+                <div class="back-button" data-target="page-settings-profile">&lsaquo; 返回個人資料</div>
+                <div class="page-title sub-page-title">🏦 玉山銀行 (•••• 1234)</div>
+                <div class="card"><p>您已連結此帳戶作為主要的保費扣款與理賠入帳戶。AI 將會（在您授權後）分析此帳戶的現金流，以提供財務建議。</p></div>
+                <div class="settings-group">
+                     <div class="clickable-list-item settings-item" style="color: #dc3545; justify-content: center;">
+                        <div class="title"><span>⛔</span> 解除連結</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-mock-bank-detail-cc" class="page sub-page white-bg">
+                <div class="back-button" data-target="page-settings-profile">&lsaquo; 返回個人資料</div>
+                <div class="page-title sub-page-title">💳 信用卡 (•••• 5678)</div>
+                <div class="card"><p>您已連結此信用卡作為保費扣款方式之一。</p></div>
+            </div>
+
+            <div id="page-mock-bank-add" class="page sub-page white-bg">
+                <div class="back-button" data-target="page-settings-profile">&lsaquo; 返回個人資料</div>
+                <div class="page-title sub-page-title">新增銀行帳戶</div>
+                <div class="card"><p>（此處為模擬新增銀行帳戶或信用卡連結的流程...）</p></div>
+            </div>
+
+            <div id="page-logout" class="page fullscreen-page">
+                <div class="logout-screen">
+                    <div class="icon">👋</div>
+                    <h2>您已登出</h2>
+                    <p>感謝您使用 AI 終身規劃師</p>
+                    <a class="login-again-btn" data-target="page-home">重新登入</a>
+                </div>
+            </div>
+        
+            <div class="fab" data-target="page-chatbot">
+                🤖
+            </div>
+        </div> 
+
+        <div class="nav-bar">
+            <div class="nav-item active" data-page="page-home">
+                <span>🏠</span>
+                <div>首頁</div>
+            </div>
+            <div class="nav-item" data-page="page-tasks">
+                <span>🎯</span>
+                <div>健康任務</div>
+            </div>
+            <div class="nav-item" data-page="page-policies">
+                <span>📄</span>
+                <div>我的保單</div>
+            </div>
+            <div class="nav-item" data-page="page-settings">
+                <span>⚙️</span>
+                <div>設定</div>
+            </div>
+        </div>
+
+    </div> <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // --- 全局變數 ---
+        const navItems = document.querySelectorAll('.nav-item');
+        const pages = document.querySelectorAll('.page');
+        const screen = document.querySelector('.screen');
+        
+        let chartInstances = {}; // 用一個物件來管理所有圖表
+
+        // --- 1. 核心導航功能 ---
+        function showPage(pageId, pageData = {}) {
+            // [★ 修正] 確保 pageId 存在
+            if (!pageId) {
+                console.error("showPage called with invalid pageId:", pageId);
+                pageId = 'page-home'; // 備援：回到首頁
+            }
+            
+            let targetPage = document.getElementById(pageId);
+            
+            if (!targetPage) {
+                console.warn(`Page element with ID "${pageId}" not found. Redirecting to home.`);
+                targetPage = document.getElementById('page-home');
+                pageId = 'page-home'; // 確保 pageId 更新
+            }
+            
+            // (A) 隱藏所有頁面
+            pages.forEach(page => page.classList.remove('active'));
+            
+            // (B) 顯示目標頁面
+            targetPage.classList.add('active');
+            targetPage.scrollTop = 0; 
+            
+            // (C) 處理底部導航列的 active 狀態
+            if (!targetPage.classList.contains('sub-page') && !targetPage.classList.contains('fullscreen-page')) {
+                navItems.forEach(nav => {
+                    nav.classList.toggle('active', nav.getAttribute('data-page') === pageId);
+                });
+            }
+            
+            // (D) 根據頁面 ID，*在此刻*才繪製圖表或更新內容
+            // [★ 修正] 加入 try...catch 確保圖表錯誤不崩潰
+            try {
+                if (pageId === 'page-health-report') {
+                    drawStaticCharts(); 
+                }
+                if (pageId === 'page-coverage-detail') {
+                    const title = pageData.title || '保障缺口分析';
+                    const productName = pageData.productName || 'AI 推薦方案';
+                    const productIcon = pageData.productIcon || '🛡️';
+                    
+                    // [★ 修正] 檢查元素是否存在才更新
+                    const titleElement = document.getElementById('coverage-detail-title');
+                    const gapTextElement = document.getElementById('coverage-gap-text');
+                    const recoIconElement = document.getElementById('reco-product-icon');
+                    const recoNameElement = document.getElementById('reco-product-name');
+
+                    if (titleElement) titleElement.innerText = `保障缺口：${title}`;
+                    if (gapTextElement) gapTextElement.innerText = `AI 發現「${title}」保障不足...`;
+                    if (recoIconElement) recoIconElement.innerText = productIcon;
+                    if (recoNameElement) recoNameElement.innerText = `巴黎人壽「${productName}」`;
+                    
+                    drawCoverageChart(title); 
+                }
+                
+                if (pageId === 'page-policy-list') {
+                    const title = pageData.title || '保單列表';
+                    const policyTitleElement = document.getElementById('policy-list-title');
+                    if (policyTitleElement) policyTitleElement.innerText = title;
+                    drawPolicyList(title); 
+                }
+            } catch (error) {
+                console.error(`Error while preparing page ${pageId}:`, error);
+                // 即使出錯，也要確保基本導航能運作
+            }
+        }
+
+        // --- 2. 使用「事件委派」來處理所有點擊 ---
+        screen.addEventListener('click', function(e) {
+            
+            // (A) 檢查 data-target (導航)
+            const targetElement = e.target.closest('[data-target]');
+            if (targetElement) {
+                e.preventDefault(); 
+                e.stopPropagation(); 
+                
+                const targetPageId = targetElement.getAttribute('data-target');
+                const pageData = {
+                    title: targetElement.getAttribute('data-title'),
+                    productName: targetElement.getAttribute('data-product-name'),
+                    productIcon: targetElement.getAttribute('data-product-icon')
+                };
+                // alert(targetPageId);
+                showPage(targetPageId, pageData);
+                return; 
+            }
+            
+            // (B) 檢查 FAQ
+            const faqHeader = e.target.closest('.faq-item-header');
+            if (faqHeader) {
+                faqHeader.parentElement.classList.toggle('active');
+                return; 
+            }
+            
+            // (C) [★ 新增] 可以在此處添加其他非導航的點擊處理 (例如表單提交按鈕)
+            // if (e.target.closest('.form-button')) { ... }
+        });
+        
+        // --- 3. 處理「底部導航列」點擊 (這個保持不變) ---
+        navItems.forEach(item => {
+            item.addEventListener('click', function() {
+                const targetPageId = this.getAttribute('data-page');
+                showPage(targetPageId);
+            });
+        });
+
+        // --- 4. 繪製圖表 (Lazy Load & 更健壯) ---
+        
+        function drawStaticCharts() {
+            try {
+                // 睡眠圖表
+                const sleepCanvas = document.getElementById('sleepChart');
+                if (sleepCanvas) {
+                    if (chartInstances['sleepChart']) chartInstances['sleepChart'].destroy();
+                    const sleepCtx = sleepCanvas.getContext('2d');
+                    chartInstances['sleepChart'] = new Chart(sleepCtx, {
+                        type: 'line',
+                        data: {
+                            labels: ['10/11', '10/12', '10/13', '10/14', '10/15', '10/16', '10/17'],
+                            datasets: [{
+                                label: '睡眠時數', data: [7.5, 6.8, 7.2, 6.5, 8.0, 7.1, 6.5],
+                                borderColor: 'rgba(0, 122, 255, 1)', backgroundColor: 'rgba(0, 122, 255, 0.1)',
+                                fill: true, tension: 0.3
+                            }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false }
+                    });
+                } else { console.warn("Canvas 'sleepChart' not found."); }
+
+                // 步數圖表
+                const stepsCanvas = document.getElementById('stepsChart');
+                if (stepsCanvas) {
+                    if (chartInstances['stepsChart']) chartInstances['stepsChart'].destroy();
+                    const stepsCtx = stepsCanvas.getContext('2d');
+                    chartInstances['stepsChart'] = new Chart(stepsCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: ['W1', 'W2', 'W3', 'W4'],
+                            datasets: [{
+                                label: '平均每日步數', data: [7200, 8100, 6900, 8300],
+                                backgroundColor: 'rgba(52, 199, 89, 0.8)'
+                            }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false }
+                    });
+                } else { console.warn("Canvas 'stepsChart' not found."); }
+                
+            } catch (error) {
+                console.error("Error drawing static charts:", error);
+            }
+        }
+        
+        function drawCoverageChart(category) {
+            try {
+                const coverageCanvas = document.getElementById('coverageChart');
+                if (!coverageCanvas) {
+                    console.warn("Canvas 'coverageChart' not found.");
+                    return;
+                }
+                
+                const ctx = coverageCanvas.getContext('2d');
+                let chartData;
+                switch(category) {
+                    case '基礎醫療': case '意外 / 傷殘': chartData = [100, 0]; break;
+                    case '家庭責任 (壽險)': chartData = [70, 30]; break;
+                    case '退休金流 (理財)': chartData = [20, 80]; break;
+                    case '重大疾病 / 癌症': case '長照 / 傳承': default: chartData = [5, 95]; break;
+                }
+
+                if (chartInstances['coverageChart']) {
+                    chartInstances['coverageChart'].destroy();
+                }
+                
+                chartInstances['coverageChart'] = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['目前保障', '保障缺口'],
+                        datasets: [{
+                            data: chartData,
+                            backgroundColor: ['rgba(0, 122, 255, 1)', 'rgba(220, 53, 69, 1)'],
+                            borderColor: ['#fff', '#fff'], borderWidth: 2
+                        }]
+                    },
+                    options: { 
+                        responsive: true, maintainAspectRatio: false, cutout: '70%',
+                        plugins: { legend: { position: 'bottom' } }
+                    }
+                });
+            } catch (error) {
+                console.error("Error drawing coverage chart:", error);
+            }
+        }
+        
+        // (C) 動態填入保單列表
+        function drawPolicyList(category) {
+            const container = document.getElementById('policy-list-container');
+            if (!container) return;
+            
+            let policiesHtml = '';
+            switch(category) {
+                case '基礎醫療':
+                    policiesHtml = `
+                        <div class="clickable-list-item settings-item"><div class="title"><span>📄</span> XX 實支實付醫療險</div><div class="arrow">&rsaquo;</div></div>
+                        <div class="clickable-list-item settings-item"><div class="title"><span>📄</span> OO 住院日額</div><div class="arrow">&rsaquo;</div></div>`;
+                    break;
+                case '意外 / 傷殘':
+                    policiesHtml = `
+                        <div class="clickable-list-item settings-item"><div class="title"><span>📄</span> XX 意外險</div><div class="arrow">&rsaquo;</div></div>`;
+                    break;
+                case '家庭責任 (壽險)':
+                    policiesHtml = `
+                        <div class="clickable-list-item settings-item"><div class="title"><span>📄</span> XX 20年期壽險</div><div class="arrow">&rsaquo;</div></div>
+                        <div class="clickable-list-item settings-item"><div class="title"><span>📄</span> OO 投資型保單 (壽險)</div><div class="arrow">&rsaquo;</div></div>`;
+                    break;
+                default:
+                    policiesHtml = `<div style="padding: 20px; text-align: center; color: #888;">您在此分類尚無保單</div>`;
+                    break;
+            }
+            container.innerHTML = policiesHtml;
+        }
+        
+    });
+</script>
+
+</body>
+</html>
