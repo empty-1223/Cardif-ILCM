@@ -73,23 +73,35 @@
         .page {
             width: 100%;
             height: 100%;
-            padding: 40px 18px 80px 18px; /* 預留 80px 給底部導航 */
+            padding: 40px 18px 80px 18px; /* 預設 padding (非聊天頁) */
             box-sizing: border-box;
-            overflow-y: auto;
+            overflow-y: auto; /* 預設可滾動 */
             display: none; /* 預設隱藏 */
-            position: absolute;
+            position: absolute; /* 確保返回按鈕可以相對定位 */
             background-color: var(--light-gray);
             -webkit-overflow-scrolling: touch;
         }
         
         .page.active {
-            display: block;
+            display: block; /* JS 會根據頁面 ID 修改為 flex 或 block */
         }
         
         .page.sub-page {
-            padding-bottom: 40px;
+             /* 非聊天子頁面的特定 padding */
+            padding: 40px 18px 40px 18px; 
             z-index: 30;
-            background-color: #ffffff; /* 子頁面用白色背景，感覺更乾淨 */
+            background-color: #ffffff;
+        }
+        
+        /* 特殊處理聊天頁面 */
+        #page-chatbot, #page-support-chat {
+            /* display: flex; ★ 使用 Flexbox 佈局 */
+            flex-direction: column; /* 垂直排列 */
+            height: 100%; /* 佔滿高度 */
+            overflow: hidden; /* ★ 頁面本身不滾動 */
+            padding: 0; /* ★ 移除頁面 padding */
+            background-color: #ffffff; /* ★ 背景設為白色 */
+             /* position: absolute; top: 0; left: 0; width: 100%; */ /* 繼承自 .page */
         }
         
         .page.fullscreen-page {
@@ -111,23 +123,24 @@
          * ===============================================
          */
         .back-button {
-            position: absolute;
+            position: absolute; /* 相對於 .page 定位 */
             top: 45px;
             left: 18px;
             font-size: 16px;
             font-weight: 500;
             color: var(--primary-color);
             cursor: pointer;
-            padding: 8px;
-            margin: -8px;
-            z-index: 35;
+            padding: 8px; /* 增加點擊區域 */
+            margin: -8px; /* 補償 padding */
+            z-index: 35; /* ★ 確保在標題之上 */
         }
-        .page.sub-page.white-bg .back-button {
-             background-color: #fff; /* 確保在白色背景上也看得到 */
+        .page.sub-page.white-bg .back-button,
+        #page-travel-recommendation .back-button { /* ★ 讓白色背景的返回按鈕可見 */
+             background-color: #fff; 
         }
 
         /* * ===============================================
-         * AI 聊天懸浮按鈕 (FAB)
+         * AI 聊天懸浮按鈕 (FAB) (保持不變)
          * ===============================================
          */
         .fab {
@@ -158,7 +171,7 @@
         }
 
         /* * ===============================================
-         * 底部導航列
+         * 底部導航列 (保持不變)
          * ===============================================
          */
         .nav-bar {
@@ -209,19 +222,31 @@
             margin-bottom: 16px;
             color: #111;
         }
-        .page-title {
+        .page-title { /* 用於首頁等主頁面 */
             font-size: 28px;
             font-weight: 700;
             margin-bottom: 24px;
             color: #000;
             padding-top: 10px;
         }
-        .page-title.sub-page-title {
-            padding-top: 45px;
+        .page-title.sub-page-title { /* 用於子頁面 */
+            padding-top: 45px; /* 為返回按鈕留空間 */
             text-align: center;
             margin-bottom: 20px;
             font-size: 20px;
+            flex-shrink: 0; /* 在 Flex 佈局中不壓縮 */
+            z-index: 30; /* ★ 確保在返回按鈕之下 */
+            padding-left: 18px; /* 左右留白 */
+            padding-right: 18px;
+            box-sizing: border-box; /* padding 包含在寬度內 */
+            width: 100%; /* ★ 確保佔滿寬度 */
         }
+        
+        /* 聊天頁面的標題，減少底部間距 */
+         #page-chatbot .page-title.sub-page-title,
+         #page-support-chat .page-title.sub-page-title {
+             margin-bottom: 10px; 
+         }
         
         .clickable-list-item {
             display: flex;
@@ -250,8 +275,9 @@
         .details-link:active { opacity: 0.6; }
 
 
+        /* ... (省略其他頁面樣式，保持不變) ... */
         /* * ===============================================
-         * [頁面 1: 首頁] 卡片樣式
+         * [頁面 1: 首頁] 卡片樣式 (保持不變)
          * ===============================================
          */
         .assistant-card { background: #e0f0ff; border: 1px solid #b0d0ff; cursor: pointer; transition: all 0.15s ease-out; }
@@ -285,9 +311,9 @@
         .financial-planning { background: #f8f9fa; border: 1px solid var(--border-color); }
         .financial-planning .section-title { margin-bottom: 0; }
         .financial-planning .plan-item { padding-left: 0; padding-right: 0; }
-
+        
         /* * ===============================================
-         * [頁面 2: 健康任務] 樣式
+         * [頁面 2: 健康任務] 樣式 (保持不變)
          * ===============================================
          */
         .streak-card { background: linear-gradient(135deg, #ffc107, #fd7e14); color: var(--text-dark); text-align: center; padding: 25px 20px; cursor: pointer; transition: all 0.15s ease-out; }
@@ -314,9 +340,9 @@
         .reward-item:active { background-color: var(--border-color); }
         .reward-item:last-child { margin-bottom: 0; }
         .reward-item span { font-size: 20px; margin-right: 10px; }
-
+        
         /* * ===============================================
-         * [頁面 3: 我的保單] 樣式
+         * [頁面 3: 我的保單] 樣式 (保持不變)
          * ===============================================
          */
         .policy-summary-card { background: linear-gradient(135deg, #17a2b8, #138496); color: white; text-align: center; }
@@ -340,7 +366,7 @@
 
 
         /* * ===============================================
-         * [頁面 4: 設定] 樣式
+         * [頁面 4: 設定] 樣式 (保持不變)
          * ===============================================
          */
         .settings-group { background: #fff; border-radius: 12px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
@@ -369,25 +395,40 @@
         .logout-btn:active { background: #c82333; transform: scale(0.98); }
 
         /* * ===============================================
-         * [子頁面] 聊天室樣式
+         * [★★★ 聊天室佈局 - 最終修正 ★★★]
          * ===============================================
          */
+
+        /* 聊天內容區 */
         .chat-container {
-            display: flex;
-            flex-direction: column;
-            padding-bottom: 80px; /* 為輸入框留空間 */
-            padding-top: 10px;
+            flex-grow: 1; /* ★ 填滿空間 */
+            overflow-y: auto; /* ★ 內部滾動 */
+            -webkit-overflow-scrolling: touch;
+            padding: 10px 18px; /* ★ 上下左右 padding */
         }
+        
         .chat-bubble { max-width: 80%; padding: 12px 16px; border-radius: 20px; line-height: 1.5; font-size: 15px; margin-bottom: 12px; }
         .chat-bubble.bot { background-color: var(--border-color); color: #000; align-self: flex-start; border-bottom-left-radius: 4px; }
         .chat-bubble.user { background-color: var(--primary-color); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
         
-        .chat-input-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 70px; background: #fff; border-top: 1px solid #ddd; display: flex; align-items: center; padding: 10px 15px 25px 15px; box-sizing: border-box; }
+        /* 聊天輸入框 */
+        .chat-input-bar { 
+            position: relative; /* ★ 作為 Flex item */
+            height: 70px; 
+            background: #fff; 
+            border-top: 1px solid #ddd; 
+            display: flex; 
+            align-items: center; 
+            padding: 10px 18px 25px 18px; /* ★ 內部 padding */
+            box-sizing: border-box; 
+            flex-shrink: 0; /* ★ 高度固定 */
+        }
+        
         .chat-input { flex-grow: 1; height: 40px; border: 1px solid #ccc; border-radius: 20px; padding: 0 15px; font-size: 15px; }
         .chat-send-btn { margin-left: 10px; background: none; border: none; font-size: 24px; color: var(--primary-color); cursor: pointer; }
         
         /* * ===============================================
-         * [子頁面] 健康報告 & 圖表
+         * [其他子頁面樣式] (保持不變)
          * ===============================================
          */
          .report-summary-card { background: #e6f7ff; border: 1px solid #91d5ff; text-align: center; }
@@ -406,10 +447,6 @@
             margin: 10px auto 0 auto;
          }
 
-        /* * ===============================================
-         * [子頁面] 登出頁面
-         * ===============================================
-         */
         .logout-screen { text-align: center; }
         .logout-screen .icon { font-size: 64px; }
         .logout-screen h2 { color: #fff; font-size: 24px; margin: 20px 0; }
@@ -417,10 +454,6 @@
         .login-again-btn { background: #fff; color: var(--primary-dark); font-weight: 600; border-radius: 12px; padding: 16px 30px; cursor: pointer; transition: all 0.15s ease-out; text-decoration: none; font-size: 16px; }
         .login-again-btn:active { transform: scale(0.95); }
 
-        /* * ===============================================
-         * [子頁面] FAQ 摺疊樣式
-         * ===============================================
-         */
         .faq-item {
             background: #fff;
             border-radius: 12px;
@@ -461,10 +494,6 @@
             max-height: 200px; /* 展開高度 */
         }
         
-        /* * ===============================================
-         * [子頁面] 獎品商城
-         * ===============================================
-         */
         .rewards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         .reward-card {
             background: #fff;
@@ -481,10 +510,6 @@
         .reward-card .title { font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--text-dark); }
         .reward-card .cost { font-size: 13px; color: var(--primary-color); font-weight: 500; margin-bottom: 15px; }
 
-        /* * ===============================================
-         * [子頁面] 表單樣式 (個人資料等)
-         * ===============================================
-         */
          .form-group {
             margin-bottom: 20px;
          }
@@ -529,13 +554,12 @@
         
         <div class="screen">
 
-            <div id="page-home" class="page active">
-                
-                <div class="card assistant-card" data-target="page-chatbot">
+            <div id="page-home" class="page active"> 
+                <div class="card assistant-card" data-target="page-travel-recommendation"> 
                     <h3><span>🤖</span> AI 助理 小P 關心您</h3>
                     <p>
                         王先生，偵測到您下週將前往日本，系統已自動為您試算「海外突發傷病」保障缺口。
-                        <a href="#" data-target="page-coverage-detail" 
+                        <a href="#" data-target="page-travel-recommendation" 
                            data-title="海外突發傷病" 
                            data-product-name="環球旅平卡 (海外醫療)" 
                            data-product-icon="✈️">點此查看建議方案 &raquo;
@@ -560,7 +584,7 @@
                         </div>
                         <div class="health-item">
                             <span>昨晚睡眠</span>
-                            <span class="status-warn">6.5 小時 !</span>
+                            <span class="status-warn">6.5 小時 </span>
                         </div>
                         <div class="health-item">
                             <span>本週有氧任務 (3次)</span>
@@ -643,8 +667,8 @@
                 </div>
             </div> 
             
-            <div id="page-tasks" class="page">
-                <div class="page-title">🎯 健康任務</div>
+            <div id="page-tasks" class="page"> 
+                 <div class="page-title">🎯 健康任務</div>
                 
                 <div class="card streak-card" data-target="page-rewards-store">
                     <div class="icon">🔥</div>
@@ -690,7 +714,7 @@
                 </div>
             </div> 
 
-            <div id="page-policies" class="page">
+            <div id="page-policies" class="page"> 
                 <div class="page-title">📄 我的保單</div>
                 <div class="card policy-summary-card">
                     <h3>AI 保單管家</h3>
@@ -713,8 +737,8 @@
                 <div class="policy-category"><div class="policy-category-header" data-target="page-policy-list" data-title="長照 / 傳承"><div class="title"><span>🏦</span> 長照 / 傳承</div><div class="status status-urgent">0 份 (嚴重不足)</div></div></div>
             </div> 
 
-            <div id="page-settings" class="page">
-                <div class="page-title">⚙️ 設定</div>
+            <div id="page-settings" class="page"> 
+                 <div class="page-title">⚙️ 設定</div>
                 <div class="section-title">帳戶</div>
                 <div class="settings-group">
                     <div class="clickable-list-item settings-item" data-target="page-settings-profile">
@@ -787,30 +811,117 @@
                 <div class="logout-btn" data-target="page-logout">登出</div>
             </div> 
             
-            <div id="page-chatbot" class="page sub-page">
-                <div class="back-button" data-target="page-home">&lsaquo; 返回</div>
+            <div id="page-chatbot" class="page sub-page"> 
+                <div class="back-button" data-target="page-home">&lsaquo; 返回</div> 
                 <div class="page-title sub-page-title">🤖 AI 助理 小P</div>
                 <div class="chat-container">
                     <div class="chat-bubble bot">您好，王先生！我是您的 AI 終身規劃師，有什麼可以協助您的嗎？</div>
                     <div class="chat-bubble bot">您可以問我「我的長照保障夠嗎？」或「幫我規劃子女教育金」。</div>
-                    <div class="chat-bubble user">我的長照保障夠嗎？</div>
-                    <div class="chat-bubble bot">正在為您分析... 根據您上傳的 5 份保單，您目前在「長照保障」項目有 0 元的額度，保障嚴重不足。</div>
-                    <div class="chat-bubble bot">AI 建議您參考「長照久久」方案，它能與您的健康積分連動，最高可折抵 30% 保費。</div>
+                    <div class="chat-bubble user">我上週的理賠申請被拒絕了，我很不高興！</div>
+                    <div class="chat-bubble bot">王先生，我理解您的沮喪。理賠問題較為複雜，我偵測到這需要立即處理。</div>
+                    <div class="chat-bubble bot">
+                        <b>[智能觸發]</b> 系統建議轉接真人「理賠專家」。<br>
+                        <b>[精準分流]</b> 我將為您匹配最適合的理賠顧問，省去您層層轉接的麻煩。
+                    </div>
+                    <div class="chat-bubble user">好，幫我轉接。</div>
+                    <div class="chat-bubble bot">
+                        <b>[無縫信息交接]</b> 好的，在您轉接前，我會將「您的保單號碼」、「理賠申請日期」及「您剛才的問題摘要」一併傳送給專家。
+                        <br><br>
+                        您無需重複說明，專家能立即進入狀況。
+                        <br>
+                        ... 正在為您轉接 ...
+                    </div>
+                    <div class="chat-bubble bot" style="cursor: pointer;" data-target="page-support-chat">
+                        已為您轉接至真人客服頁面。<br>
+                        <a href="#" data-target="page-support-chat">點此立即前往 &raquo;</a>
+                    </div>
+                    <div class="chat-bubble bot">補充說明，理賠流程通常需要...</div>
+                    <div class="chat-bubble user">了解。</div>
+                    <div class="chat-bubble bot">專家將會詳細檢視您的案件...</div>
+                    <div class="chat-bubble user">謝謝。</div>
+                    <div class="chat-bubble bot">不客氣，請稍候...</div>
+                    <div class="chat-bubble bot">轉接中...</div>
+                    <div class="chat-bubble bot">即將為您接通...</div>
                 </div>
                 <div class="chat-input-bar"><input type="text" class="chat-input" placeholder="輸入訊息..."><button class="chat-send-btn">➤</button></div>
             </div>
             
-            <div id="page-support-chat" class="page sub-page">
+            <div id="page-support-chat" class="page sub-page"> 
                 <div class="back-button" data-target="page-settings">&lsaquo; 返回設定</div>
-                <div class="page-title sub-page-title">💬 真人客服</div>
-                <div class="chat-container">
-                    <div class="chat-bubble bot">您好，真人客服專員 089 號很高興為您服務。</div>
-                    <div class="chat-bubble user">我想詢問有關保單上傳的隱私權問題。</div>
+                 <div class="page-title sub-page-title">💬 真人客服 (理賠專家)</div>
+                 <div class="chat-container">
+                    <div class="chat-bubble bot" style="background-color: #e0f0ff; text-align: left; color: #333; border-bottom-left-radius: 20px;">
+                        <strong style="color: var(--primary-dark);">--- 來自 AI 助理小P 的交接摘要 ---</strong><br>
+                        <b>客戶:</b> 王先生<br>
+                        <b>問題:</b> 理賠遭拒 (高爭議/高情緒)<br>
+                        <b>摘要:</b> 客戶對於近期的理賠結果感到沮喪，需要專人協助處理。<br>
+                        <span style="font-size: 13px; color: #555;">(AI已匹配：理賠部 專家089)</span>
+                    </div>
+                    <div class="chat-bubble bot">
+                        王先生您好，我是理賠專家 089 號。
+                    </div>
+                    <div class="chat-bubble bot">
+                        我已經收到 AI 助理轉交的摘要，了解您對理賠結果有疑問。我看到您是上週三提出的申請，請您稍等，我正在立即為您調閱案件資料...
+                    </div>
+                    <div class="chat-bubble user">
+                        太好了，感謝。我不用再重講一次。
+                    </div>
+                    <div class="chat-bubble bot">正在查詢...</div>
+                    <div class="chat-bubble bot">根據系統記錄...</div>
+                    <div class="chat-bubble user">好的。</div>
+                    <div class="chat-bubble bot">原因是...</div>
+                    <div class="chat-bubble user">原來如此。</div>
+                    <div class="chat-bubble bot">您可以補充...</div>
+                    <div class="chat-bubble user">我該怎麼做？</div>
+                    <div class="chat-bubble bot">建議您...</div>
                 </div>
                 <div class="chat-input-bar"><input type="text" class="chat-input" placeholder="輸入訊息..."><button class="chat-send-btn">➤</button></div>
             </div>
             
-            <div id="page-health-report" class="page sub-page white-bg">
+            <div id="page-travel-recommendation" class="page sub-page white-bg">
+                <div class="back-button" data-target="page-home">&lsaquo; 返回首頁</div>
+                <div class="page-title sub-page-title">✈️ 海外突發傷病 保障建議</div>
+
+                <div class="card">
+                    <div class="section-title">AI 分析與建議</div>
+                    <p style="font-size: 14px; line-height: 1.6;">
+                        王先生您好，
+                    </p>
+                    <p style="font-size: 14px; line-height: 1.6;">
+                        偵測到您下週將前往日本，根據您的年齡、健康狀況以及日本當地的醫療費用水平，AI 評估您目前的「海外突發傷病」保障額度可能不足。
+                    </p>
+                     <p style="font-size: 14px; line-height: 1.6;">
+                        <strong>建議保障額度：</strong> 至少 100 萬新台幣 (含醫療專機)。
+                    </p>
+                     <p style="font-size: 14px; line-height: 1.6;">
+                        <strong>風險提醒：</strong> 日本醫療費用較高，若不幸發生意外或突發疾病，未有足夠保障可能導致龐大的醫療開銷。
+                    </p>
+                </div>
+
+                <div class="card">
+                    <div class="section-title">推薦方案</div>
+                     <div class="clickable-list-item plan-item" data-target="page-coverage-detail" data-title="海外突發傷病" data-product-name="環球旅平卡 (海外醫療)" data-product-icon="✈️">
+                        <div class="title">
+                            <span>✈️</span> 
+                            <span>巴黎人壽「環球旅平卡 (海外醫療)」</span>
+                        </div>
+                        <div class="arrow">&rsaquo;</div>
+                    </div>
+                     <p style="font-size: 13px; color: var(--text-light); margin-top: 10px;">
+                        點擊上方方案可查看詳細保障內容與保費試算。
+                    </p>
+                </div>
+                 <div class="card policy-gap-card" style="cursor: default;">
+                    <div class="icon">💡</div>
+                    <div class="text">
+                        <strong>小提示：</strong> 您也可以透過 AI 助理小P 或真人客服，進一步諮詢適合您的旅遊平安險方案。
+                        <br>
+                        <a href="#" data-target="page-chatbot">聯繫 AI 助理 &raquo;</a>
+                    </div>
+                </div>
+            </div>
+
+             <div id="page-health-report" class="page sub-page white-bg">
                 <div class="back-button" data-target="page-home">&lsaquo; 返回首頁</div>
                 <div class="page-title sub-page-title">詳細健康報告</div>
                 
@@ -901,7 +1012,7 @@
                 <div class="section-title" style="margin-top: 30px;">財務資料</div>
                 <div class="settings-group">
                     <div class="clickable-list-item settings-item" data-target="page-mock-bank-detail">
-                        <div class="title"><span>🏦</span> 玉山銀行 (E.SUN)</div>
+                        <div class="title"><span>🏦</span> 阿里山銀行 (Ali.SUN)</div>
                         <div class="value">•••• 1234</div>
                     </div>
                     <div class="clickable-list-item settings-item" data-target="page-mock-bank-detail-cc">
@@ -970,7 +1081,7 @@
             
             <div id="page-mock-bank-detail" class="page sub-page white-bg">
                 <div class="back-button" data-target="page-settings-profile">&lsaquo; 返回個人資料</div>
-                <div class="page-title sub-page-title">🏦 玉山銀行 (•••• 1234)</div>
+                <div class="page-title sub-page-title">🏦 阿里山銀行 (•••• 1234)</div>
                 <div class="card"><p>您已連結此帳戶作為主要的保費扣款與理賠入帳戶。AI 將會（在您授權後）分析此帳戶的現金流，以提供財務建議。</p></div>
                 <div class="settings-group">
                      <div class="clickable-list-item settings-item" style="color: #dc3545; justify-content: center;">
@@ -1024,7 +1135,9 @@
             </div>
         </div>
 
-    </div> <script>
+    </div> 
+    
+    <script>
     document.addEventListener('DOMContentLoaded', function() {
         
         // --- 全局變數 ---
@@ -1051,21 +1164,44 @@
             }
             
             // (A) 隱藏所有頁面
-            pages.forEach(page => page.classList.remove('active'));
+            pages.forEach(page => {
+                 page.classList.remove('active');
+                 // [★ 修正] 確保 display 正確設置為 none
+                 page.style.display = 'none'; 
+            });
             
-            // (B) 顯示目標頁面
-            targetPage.classList.add('active');
-            targetPage.scrollTop = 0; 
+            // (B) 顯示目標頁面 - 根據頁面 ID 設置 display 屬性
+            if (pageId === 'page-chatbot' || pageId === 'page-support-chat') {
+                targetPage.style.display = 'flex'; // ★ 聊天頁面用 flex
+            } else {
+                targetPage.style.display = 'block';// ★ 其他頁面用 block
+            }
+            targetPage.classList.add('active'); // ★ 添加 active class
             
-            // (C) 處理底部導航列的 active 狀態
+            
+            // (C) 處理滾動行為
+            if (pageId === 'page-chatbot' || pageId === 'page-support-chat') {
+                // 找到聊天容器
+                const chatContainer = targetPage.querySelector('.chat-container');
+                if (chatContainer) {
+                    // ★ 延遲滾動到底部，確保渲染完成
+                    setTimeout(() => {
+                        chatContainer.scrollTop = chatContainer.scrollHeight;
+                    }, 0); 
+                }
+            } else {
+                // 其他頁面滾動到頂部
+                targetPage.scrollTop = 0; 
+            }
+            
+            // (D) 處理底部導航列的 active 狀態
             if (!targetPage.classList.contains('sub-page') && !targetPage.classList.contains('fullscreen-page')) {
                 navItems.forEach(nav => {
                     nav.classList.toggle('active', nav.getAttribute('data-page') === pageId);
                 });
             }
             
-            // (D) 根據頁面 ID，*在此刻*才繪製圖表或更新內容
-            // [★ 修正] 加入 try...catch 確保圖表錯誤不崩潰
+            // (E) 繪製圖表或更新內容 (保持不變)
             try {
                 if (pageId === 'page-health-report') {
                     drawStaticCharts(); 
@@ -1075,7 +1211,6 @@
                     const productName = pageData.productName || 'AI 推薦方案';
                     const productIcon = pageData.productIcon || '🛡️';
                     
-                    // [★ 修正] 檢查元素是否存在才更新
                     const titleElement = document.getElementById('coverage-detail-title');
                     const gapTextElement = document.getElementById('coverage-gap-text');
                     const recoIconElement = document.getElementById('reco-product-icon');
@@ -1097,18 +1232,17 @@
                 }
             } catch (error) {
                 console.error(`Error while preparing page ${pageId}:`, error);
-                // 即使出錯，也要確保基本導航能運作
             }
         }
 
-        // --- 2. 使用「事件委派」來處理所有點擊 ---
+        // --- 2. 使用「事件委派」來處理所有點擊 --- (★ 確保對 back-button 也有效)
         screen.addEventListener('click', function(e) {
             
-            // (A) 檢查 data-target (導航)
+            // 檢查是否點擊在具有 data-target 的元素上 (包括返回按鈕)
             const targetElement = e.target.closest('[data-target]');
             if (targetElement) {
                 e.preventDefault(); 
-                e.stopPropagation(); 
+                e.stopPropagation(); // 防止事件冒泡干擾
                 
                 const targetPageId = targetElement.getAttribute('data-target');
                 const pageData = {
@@ -1116,23 +1250,23 @@
                     productName: targetElement.getAttribute('data-product-name'),
                     productIcon: targetElement.getAttribute('data-product-icon')
                 };
-                // alert(targetPageId);
-                showPage(targetPageId, pageData);
-                return; 
+                
+                // ★ 調用 showPage 函數進行頁面切換
+                showPage(targetPageId, pageData); 
+                return; // 處理完畢，退出函數
             }
             
-            // (B) 檢查 FAQ
+            // 檢查 FAQ (保持不變)
             const faqHeader = e.target.closest('.faq-item-header');
             if (faqHeader) {
                 faqHeader.parentElement.classList.toggle('active');
                 return; 
             }
             
-            // (C) [★ 新增] 可以在此處添加其他非導航的點擊處理 (例如表單提交按鈕)
-            // if (e.target.closest('.form-button')) { ... }
+            // (可以在此處添加其他非導航的點擊處理)
         });
         
-        // --- 3. 處理「底部導航列」點擊 (這個保持不變) ---
+        // --- 3. 處理「底部導航列」點擊 (保持不變) ---
         navItems.forEach(item => {
             item.addEventListener('click', function() {
                 const targetPageId = this.getAttribute('data-page');
@@ -1140,60 +1274,27 @@
             });
         });
 
-        // --- 4. 繪製圖表 (Lazy Load & 更健壯) ---
-        
+        // --- 4. 繪製圖表函數 (保持不變) --- 
         function drawStaticCharts() {
             try {
-                // 睡眠圖表
                 const sleepCanvas = document.getElementById('sleepChart');
                 if (sleepCanvas) {
                     if (chartInstances['sleepChart']) chartInstances['sleepChart'].destroy();
                     const sleepCtx = sleepCanvas.getContext('2d');
-                    chartInstances['sleepChart'] = new Chart(sleepCtx, {
-                        type: 'line',
-                        data: {
-                            labels: ['10/11', '10/12', '10/13', '10/14', '10/15', '10/16', '10/17'],
-                            datasets: [{
-                                label: '睡眠時數', data: [7.5, 6.8, 7.2, 6.5, 8.0, 7.1, 6.5],
-                                borderColor: 'rgba(0, 122, 255, 1)', backgroundColor: 'rgba(0, 122, 255, 0.1)',
-                                fill: true, tension: 0.3
-                            }]
-                        },
-                        options: { responsive: true, maintainAspectRatio: false }
-                    });
+                    chartInstances['sleepChart'] = new Chart(sleepCtx, { type: 'line', data: { labels: ['10/11', '10/12', '10/13', '10/14', '10/15', '10/16', '10/17'], datasets: [{ label: '睡眠時數', data: [7.5, 6.8, 7.2, 6.5, 8.0, 7.1, 6.5], borderColor: 'rgba(0, 122, 255, 1)', backgroundColor: 'rgba(0, 122, 255, 0.1)', fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false } });
                 } else { console.warn("Canvas 'sleepChart' not found."); }
-
-                // 步數圖表
                 const stepsCanvas = document.getElementById('stepsChart');
                 if (stepsCanvas) {
                     if (chartInstances['stepsChart']) chartInstances['stepsChart'].destroy();
                     const stepsCtx = stepsCanvas.getContext('2d');
-                    chartInstances['stepsChart'] = new Chart(stepsCtx, {
-                        type: 'bar',
-                        data: {
-                            labels: ['W1', 'W2', 'W3', 'W4'],
-                            datasets: [{
-                                label: '平均每日步數', data: [7200, 8100, 6900, 8300],
-                                backgroundColor: 'rgba(52, 199, 89, 0.8)'
-                            }]
-                        },
-                        options: { responsive: true, maintainAspectRatio: false }
-                    });
+                    chartInstances['stepsChart'] = new Chart(stepsCtx, { type: 'bar', data: { labels: ['W1', 'W2', 'W3', 'W4'], datasets: [{ label: '平均每日步數', data: [7200, 8100, 6900, 8300], backgroundColor: 'rgba(52, 199, 89, 0.8)' }] }, options: { responsive: true, maintainAspectRatio: false } });
                 } else { console.warn("Canvas 'stepsChart' not found."); }
-                
-            } catch (error) {
-                console.error("Error drawing static charts:", error);
-            }
+            } catch (error) { console.error("Error drawing static charts:", error); }
         }
-        
         function drawCoverageChart(category) {
             try {
                 const coverageCanvas = document.getElementById('coverageChart');
-                if (!coverageCanvas) {
-                    console.warn("Canvas 'coverageChart' not found.");
-                    return;
-                }
-                
+                if (!coverageCanvas) { console.warn("Canvas 'coverageChart' not found."); return; }
                 const ctx = coverageCanvas.getContext('2d');
                 let chartData;
                 switch(category) {
@@ -1202,57 +1303,44 @@
                     case '退休金流 (理財)': chartData = [20, 80]; break;
                     case '重大疾病 / 癌症': case '長照 / 傳承': default: chartData = [5, 95]; break;
                 }
-
-                if (chartInstances['coverageChart']) {
-                    chartInstances['coverageChart'].destroy();
-                }
-                
-                chartInstances['coverageChart'] = new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['目前保障', '保障缺口'],
-                        datasets: [{
-                            data: chartData,
-                            backgroundColor: ['rgba(0, 122, 255, 1)', 'rgba(220, 53, 69, 1)'],
-                            borderColor: ['#fff', '#fff'], borderWidth: 2
-                        }]
-                    },
-                    options: { 
-                        responsive: true, maintainAspectRatio: false, cutout: '70%',
-                        plugins: { legend: { position: 'bottom' } }
-                    }
-                });
-            } catch (error) {
-                console.error("Error drawing coverage chart:", error);
-            }
+                if (chartInstances['coverageChart']) { chartInstances['coverageChart'].destroy(); }
+                chartInstances['coverageChart'] = new Chart(ctx, { type: 'doughnut', data: { labels: ['目前保障', '保障缺口'], datasets: [{ data: chartData, backgroundColor: ['rgba(0, 122, 255, 1)', 'rgba(220, 53, 69, 1)'], borderColor: ['#fff', '#fff'], borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom' } } } });
+            } catch (error) { console.error("Error drawing coverage chart:", error); }
         }
-        
-        // (C) 動態填入保單列表
         function drawPolicyList(category) {
             const container = document.getElementById('policy-list-container');
             if (!container) return;
-            
             let policiesHtml = '';
             switch(category) {
-                case '基礎醫療':
-                    policiesHtml = `
-                        <div class="clickable-list-item settings-item"><div class="title"><span>📄</span> XX 實支實付醫療險</div><div class="arrow">&rsaquo;</div></div>
-                        <div class="clickable-list-item settings-item"><div class="title"><span>📄</span> OO 住院日額</div><div class="arrow">&rsaquo;</div></div>`;
-                    break;
-                case '意外 / 傷殘':
-                    policiesHtml = `
-                        <div class="clickable-list-item settings-item"><div class="title"><span>📄</span> XX 意外險</div><div class="arrow">&rsaquo;</div></div>`;
-                    break;
-                case '家庭責任 (壽險)':
-                    policiesHtml = `
-                        <div class="clickable-list-item settings-item"><div class="title"><span>📄</span> XX 20年期壽險</div><div class="arrow">&rsaquo;</div></div>
-                        <div class="clickable-list-item settings-item"><div class="title"><span>📄</span> OO 投資型保單 (壽險)</div><div class="arrow">&rsaquo;</div></div>`;
-                    break;
-                default:
-                    policiesHtml = `<div style="padding: 20px; text-align: center; color: #888;">您在此分類尚無保單</div>`;
-                    break;
+                case '基礎醫療': policiesHtml = `<div class="clickable-list-item settings-item"><div class="title"><span>📄</span> XX 實支實付醫療險</div><div class="arrow">&rsaquo;</div></div> <div class="clickable-list-item settings-item"><div class="title"><span>📄</span> OO 住院日額</div><div class="arrow">&rsaquo;</div></div>`; break;
+                case '意外 / 傷殘': policiesHtml = `<div class="clickable-list-item settings-item"><div class="title"><span>📄</span> XX 意外險</div><div class="arrow">&rsaquo;</div></div>`; break;
+                case '家庭責任 (壽險)': policiesHtml = `<div class="clickable-list-item settings-item"><div class="title"><span>📄</span> XX 20年期壽險</div><div class="arrow">&rsaquo;</div></div> <div class="clickable-list-item settings-item"><div class="title"><span>📄</span> OO 投資型保單 (壽險)</div><div class="arrow">&rsaquo;</div></div>`; break;
+                default: policiesHtml = `<div style="padding: 20px; text-align: center; color: #888;">您在此分類尚無保單</div>`; break;
             }
             container.innerHTML = policiesHtml;
+        }
+
+        // --- 5. 頁面初次載入時處理預設頁面 ---
+        const initialActivePage = document.querySelector('.page.active');
+        if (initialActivePage) {
+            // [★★★ 修正 ★★★]
+            // 根據初始頁面 ID 設置正確的 display 屬性並處理滾動
+            const initialPageId = initialActivePage.id;
+            if (initialPageId === 'page-chatbot' || initialPageId === 'page-support-chat') {
+                initialActivePage.style.display = 'flex'; // ★ 初始設置為 flex
+                 const chatContainer = initialActivePage.querySelector('.chat-container');
+                if (chatContainer) {
+                    // ★ 延遲滾動
+                    setTimeout(() => {
+                        chatContainer.scrollTop = chatContainer.scrollHeight;
+                    }, 0); 
+                }
+            } else {
+                 initialActivePage.style.display = 'block'; // ★ 其他頁面是 block
+            }
+        } else {
+             // 如果 HTML 中沒有預設 active 的頁面，預設顯示首頁
+             showPage('page-home');
         }
         
     });
