@@ -3,40 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 終身規劃師 模擬 (v14 - 完整修復版)</title>
+    <title>Cardif NEXT - Z世代夢想加速器 (v28)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         /* * ===============================================
-         * 基本設定 & 手機外框
+         * Cardif NEXT 風格設定
          * ===============================================
          */
         :root {
-            --primary-color: #007aff;
-            --primary-dark: #0056b3;
-            --light-gray: #f4f7f6;
-            --border-color: #e9ecef;
-            --text-dark: #333;
-            --text-light: #888;
+            --primary-color: #00915a; /* 法巴綠 */
+            --primary-dark: #005c3a;
+            --accent-color: #ff5e00;  /* 活力橘 */
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+            --text-main: #2c3e50;
+            --text-sub: #7f8c8d;
+            --vip-gold: #d4af37;
+            --vip-bg: linear-gradient(135deg, #141E30 0%, #243B55 100%);
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-            background: #e9e9e9;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #2c3e50;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding-top: 40px;
-            padding-bottom: 40px;
+            padding-top: 20px;
+            padding-bottom: 20px;
             height: 100vh;
             box-sizing: border-box;
-            -webkit-tap-highlight-color: rgba(0,0,0,0.05);
+            margin: 0;
         }
 
         .phone-mockup {
             width: 375px;
             height: 812px;
-            background: #fff;
-            border: 16px solid #333;
+            background: var(--bg-color);
+            border: 14px solid #1a1a1a;
             border-radius: 40px;
             box-shadow: 0 19px 38px rgba(0,0,0,0.30), 0 15px 12px rgba(0,0,0,0.22);
             position: relative;
@@ -46,1305 +50,1298 @@
         .phone-mockup::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: 50%;
+            top: 0; left: 50%;
             transform: translateX(-50%);
-            width: 210px;
-            height: 30px;
-            background: #333;
-            border-bottom-left-radius: 20px;
-            border-bottom-right-radius: 20px;
-            z-index: 10;
+            width: 180px; height: 25px;
+            background: #1a1a1a;
+            border-bottom-left-radius: 18px;
+            border-bottom-right-radius: 18px;
+            z-index: 100;
         }
 
-        /* * ===============================================
-         * 螢幕 & 頁面切換邏輯
-         * ===============================================
-         */
         .screen {
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            background: var(--light-gray);
+            width: 100%; height: 100%;
+            position: absolute; top: 0; left: 0;
+            background: var(--bg-color);
+            overflow: hidden;
         }
         
         .page {
-            width: 100%;
-            height: 100%;
-            padding: 40px 18px 80px 18px; /* 預設 padding (非聊天頁) */
+            width: 100%; height: 100%;
+            padding: 50px 20px 80px 20px;
             box-sizing: border-box;
-            overflow-y: auto; /* 預設可滾動 */
-            display: none; /* 預設隱藏 */
-            position: absolute; /* 確保返回按鈕可以相對定位 */
-            background-color: var(--light-gray);
+            overflow-y: auto;
+            display: none;
+            position: absolute;
+            background-color: var(--bg-color);
             -webkit-overflow-scrolling: touch;
         }
         
-        .page.active {
-            display: block; /* JS 會根據頁面 ID 修改為 flex 或 block */
-        }
+        .page.active { display: block; }
         
         .page.sub-page {
-             /* 非聊天子頁面的特定 padding */
-            padding: 40px 18px 40px 18px; 
+            padding: 50px 20px 20px 20px;
             z-index: 30;
             background-color: #ffffff;
         }
-        
-        /* 特殊處理聊天頁面 */
-        #page-chatbot, #page-support-chat {
-            /* display: flex; ★ 使用 Flexbox 佈局 */
-            flex-direction: column; /* 垂直排列 */
-            height: 100%; /* 佔滿高度 */
-            overflow: hidden; /* ★ 頁面本身不滾動 */
-            padding: 0; /* ★ 移除頁面 padding */
-            background-color: #ffffff; /* ★ 背景設為白色 */
-             /* position: absolute; top: 0; left: 0; width: 100%; */ /* 繼承自 .page */
-        }
-        
-        .page.fullscreen-page {
-            padding: 40px 18px;
-            z-index: 40;
-            display: none; 
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-        }
-        .page.fullscreen-page.active {
-            display: flex; 
-        }
 
         /* * ===============================================
-         * 子頁面的「返回」按鈕
-         * ===============================================
-         */
-        .back-button {
-            position: absolute; /* 相對於 .page 定位 */
-            top: 45px;
-            left: 18px;
-            font-size: 16px;
-            font-weight: 500;
-            color: var(--primary-color);
-            cursor: pointer;
-            padding: 8px; /* 增加點擊區域 */
-            margin: -8px; /* 補償 padding */
-            z-index: 35; /* ★ 確保在標題之上 */
-        }
-        .page.sub-page.white-bg .back-button,
-        #page-travel-recommendation .back-button { /* ★ 讓白色背景的返回按鈕可見 */
-             background-color: #fff; 
-        }
-
-        /* * ===============================================
-         * AI 聊天懸浮按鈕 (FAB) (保持不變)
-         * ===============================================
-         */
-        .fab {
-            position: absolute;
-            bottom: 90px;
-            right: 20px;
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 30px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-            z-index: 15;
-            cursor: pointer;
-            transition: all 0.15s ease-out;
-        }
-        .fab:active {
-            transform: scale(0.95);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-        .page.sub-page.active ~ .fab,
-        .page.fullscreen-page.active ~ .fab {
-            display: none;
-        }
-
-        /* * ===============================================
-         * 底部導航列 (保持不變)
-         * ===============================================
-         */
-        .nav-bar {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 70px;
-            background: #ffffff;
-            border-top: 1px solid #ddd;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            padding-bottom: 10px;
-            font-size: 10px;
-            color: var(--text-light);
-            z-index: 20;
-        }
-        .page.sub-page.active ~ .nav-bar,
-        .page.fullscreen-page.active ~ .nav-bar {
-            display: none;
-        }
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            cursor: pointer;
-            transition: transform 0.1s ease-out;
-        }
-        .nav-item span { font-size: 24px; }
-        .nav-item.active { color: var(--primary-color); }
-        .nav-item:active { transform: scale(0.9); }
-
-        /* * ===============================================
-         * 通用卡片 & 標題樣式
+         * 通用元件
          * ===============================================
          */
         .card {
-            background: #ffffff;
+            background: var(--card-bg);
             border-radius: 16px;
             padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        }
-        .section-title {
-            font-size: 20px;
-            font-weight: 600;
             margin-bottom: 16px;
-            color: #111;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            transition: transform 0.1s;
         }
-        .page-title { /* 用於首頁等主頁面 */
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 24px;
-            color: #000;
-            padding-top: 10px;
+        .card:active { transform: scale(0.98); }
+
+        .section-title {
+            font-size: 18px; font-weight: 700; margin-bottom: 12px; color: var(--text-main);
+            display: flex; justify-content: space-between; align-items: center;
         }
-        .page-title.sub-page-title { /* 用於子頁面 */
-            padding-top: 45px; /* 為返回按鈕留空間 */
-            text-align: center;
-            margin-bottom: 20px;
-            font-size: 20px;
-            flex-shrink: 0; /* 在 Flex 佈局中不壓縮 */
-            z-index: 30; /* ★ 確保在返回按鈕之下 */
-            padding-left: 18px; /* 左右留白 */
-            padding-right: 18px;
-            box-sizing: border-box; /* padding 包含在寬度內 */
-            width: 100%; /* ★ 確保佔滿寬度 */
+
+        .page-title { font-size: 26px; font-weight: 800; margin-bottom: 20px; color: var(--text-main); }
+        .sub-page-title { font-size: 20px; text-align: center; margin-bottom: 20px; padding-top: 10px; }
+
+        .back-button {
+            position: absolute; top: 45px; left: 20px; font-size: 24px;
+            font-weight: 600; color: var(--primary-color); cursor: pointer; z-index: 40; padding: 5px 10px;
         }
-        
-        /* 聊天頁面的標題，減少底部間距 */
-         #page-chatbot .page-title.sub-page-title,
-         #page-support-chat .page-title.sub-page-title {
-             margin-bottom: 10px; 
-         }
-        
-        .clickable-list-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 14px 4px;
-            margin: 0 -4px;
-            border-bottom: 1px solid var(--border-color);
-            font-size: 15px;
-            cursor: pointer;
-            transition: background-color 0.15s ease-out, transform 0.1s ease-out;
-            border-radius: 8px;
+
+        .btn-primary {
+            background: var(--primary-color); color: white; border: none; width: 100%;
+            padding: 14px; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer;
         }
-        .clickable-list-item:last-child { border-bottom: none; }
-        .clickable-list-item:active {
-            background-color: var(--border-color);
-            transform: scale(0.98);
+        .btn-small {
+            padding: 6px 12px; border-radius: 15px; border: 1px solid #ddd;
+            background: white; font-size: 12px; cursor: pointer;
         }
-        .clickable-list-item .title { display: flex; align-items: center; font-weight: 500; }
-        .clickable-list-item .title span { font-size: 20px; margin-right: 12px; color: var(--primary-color); }
-        .clickable-list-item .value { color: var(--text-light); font-size: 14px; }
-        .clickable-list-item .arrow { font-size: 16px; color: #adb5bd; }
-        
-        .details-link-container { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-color); text-align: right; }
-        .details-link { color: var(--primary-color); text-decoration: none; font-size: 13px; font-weight: 500; transition: opacity 0.1s ease-out; cursor: pointer; }
-        .details-link:active { opacity: 0.6; }
-
-
-        /* ... (省略其他頁面樣式，保持不變) ... */
-        /* * ===============================================
-         * [頁面 1: 首頁] 卡片樣式 (保持不變)
-         * ===============================================
-         */
-        .assistant-card { background: #e0f0ff; border: 1px solid #b0d0ff; cursor: pointer; transition: all 0.15s ease-out; }
-        .assistant-card:active { transform: scale(0.98); box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
-        .assistant-card h3 { margin: 0 0 10px 0; color: var(--primary-dark); font-size: 16px; display: flex; align-items: center; }
-        .assistant-card h3 span { font-size: 20px; margin-right: 8px; }
-        .assistant-card p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text-dark); }
-        .assistant-card a { font-weight: bold; color: var(--primary-color); text-decoration: none; }
-        .assistant-card a:active { opacity: 0.6; }
-
-        .premium-value { background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white; text-align: center; padding: 25px 20px; }
-        .premium-value h4 { margin: 0 0 10px 0; font-size: 18px; font-weight: 500; opacity: 0.9; }
-        .premium-value .value { font-size: 36px; font-weight: bold; margin: 0 0 10px 0; line-height: 1; }
-        .premium-value .description { font-size: 13px; line-height: 1.5; opacity: 0.9; }
-
-        .health-score h4 { margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: #333; }
-        .health-item { font-size: 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
-        .status-ok { color: #28a745; font-weight: bold; }
-        .status-warn { color: #fd7e14; font-weight: bold; }
-        .health-item .task-progress { font-weight: bold; color: var(--primary-color); }
-
-        .coverage-dashboard .section-title { margin-bottom: 20px; }
-        .coverage-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .coverage-item { background: #f8f9fa; border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; text-align: center; cursor: pointer; transition: all 0.15s ease-out; }
-        .coverage-item:active { transform: scale(0.95); box-shadow: 0 2px 4px rgba(0,0,0,0.08); background-color: var(--border-color); }
-        .coverage-item .icon { font-size: 28px; margin-bottom: 8px; }
-        .coverage-item .title { font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--text-dark); }
-        .coverage-item .status { font-size: 12px; }
-        .status-good { color: #28a745; } .status-review { color: #fd7e14; } .status-plan { color: var(--primary-color); } .status-urgent { color: #dc3545; }
-
-        .financial-planning { background: #f8f9fa; border: 1px solid var(--border-color); }
-        .financial-planning .section-title { margin-bottom: 0; }
-        .financial-planning .plan-item { padding-left: 0; padding-right: 0; }
-        
-        /* * ===============================================
-         * [頁面 2: 健康任務] 樣式 (保持不變)
-         * ===============================================
-         */
-        .streak-card { background: linear-gradient(135deg, #ffc107, #fd7e14); color: var(--text-dark); text-align: center; padding: 25px 20px; cursor: pointer; transition: all 0.15s ease-out; }
-        .streak-card:active { transform: scale(0.98); box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
-        .streak-card .icon { font-size: 36px; line-height: 1; }
-        .streak-card h3 { margin: 10px 0 5px 0; font-size: 22px; font-weight: 700; }
-        .streak-card p { margin: 0; font-size: 14px; opacity: 0.9; }
-
-        .task-card { background: #f8f9fa; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
-        .task-card.daily { border-left: 5px solid var(--primary-color); }
-        .task-card.weekly { border-left: 5px solid #fd7e14; }
-        .task-card.event { border-left: 5px solid #6f42c1; cursor: pointer; transition: all 0.15s ease-out; }
-        .task-card.event:active { transform: scale(0.98); background-color: #f1f3f5; }
-        .task-card h4 { margin: 0 0 16px 0; font-size: 16px; font-weight: 600; }
-        
-        .task-item { font-size: 14px; margin-bottom: 4px; cursor: pointer; padding: 8px; margin-left: -8px; margin-right: -8px; border-radius: 8px; transition: background-color 0.15s ease-out; }
-        .task-item:active { background-color: var(--border-color); }
-        .task-item:last-child { margin-bottom: 0; }
-        .task-item .progress-bar { width: 100%; height: 8px; background: var(--border-color); border-radius: 4px; margin-top: 5px; overflow: hidden; }
-        .task-item .progress-fill { height: 100%; background: var(--primary-color); border-radius: 4px; }
-
-        .task-rewards h4 { margin: 0 0 12px 0; font-size: 16px; font-weight: 600; }
-        .reward-item { display: flex; align-items: center; font-size: 14px; margin-bottom: 8px; cursor: pointer; padding: 8px; margin-left: -8px; margin-right: -8px; border-radius: 8px; transition: background-color 0.15s ease-out; }
-        .reward-item:active { background-color: var(--border-color); }
-        .reward-item:last-child { margin-bottom: 0; }
-        .reward-item span { font-size: 20px; margin-right: 10px; }
-        
-        /* * ===============================================
-         * [頁面 3: 我的保單] 樣式 (保持不變)
-         * ===============================================
-         */
-        .policy-summary-card { background: linear-gradient(135deg, #17a2b8, #138496); color: white; text-align: center; }
-        .policy-summary-card h3 { margin: 0 0 8px 0; font-size: 18px; font-weight: 500; opacity: 0.9; }
-        .policy-summary-card .policy-count { font-size: 36px; font-weight: bold; margin-bottom: 8px; line-height: 1; }
-        
-        .policy-category { margin-bottom: 16px; }
-        .policy-category-header { background: #f8f9fa; border: 1px solid var(--border-color); padding: 16px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background-color 0.15s ease-out, transform 0.1s ease-out; }
-        .policy-category-header:active { background-color: var(--border-color); transform: scale(0.985); }
-        .policy-category-header .title { font-size: 16px; font-weight: 600; display: flex; align-items: center; }
-        .policy-category-header .title span { font-size: 22px; margin-right: 10px; }
-        .policy-category-header .status { font-size: 14px; }
-        
-        .policy-gap-card { background: #fffbe6; border: 1px solid #ffeeba; display: flex; align-items: center; padding: 16px; cursor: pointer; transition: all 0.15s ease-out; }
-        .policy-gap-card:active { transform: scale(0.98); background-color: #fff3cd; }
-        .policy-gap-card .icon { font-size: 24px; margin-right: 12px; color: #fd7e14; }
-        .policy-gap-card .text { font-size: 14px; line-height: 1.5; }
-        .policy-gap-card .text strong { color: #000; }
-        .policy-gap-card .text a { color: var(--primary-color); font-weight: 600; text-decoration: none; }
-        .policy-gap-card .text a:active { opacity: 0.6; }
-
+        .btn-view-more {
+            background: #eee; color: #666; width: 100%; padding: 12px;
+            border-radius: 8px; border: none; margin-top: 15px; font-size: 14px; cursor: pointer;
+        }
 
         /* * ===============================================
-         * [頁面 4: 設定] 樣式 (保持不變)
+         * 首頁元件 (含鈴鐺)
          * ===============================================
          */
-        .settings-group { background: #fff; border-radius: 12px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
-        .settings-item { padding-left: 16px; padding-right: 16px; margin: 0; border-radius: 0; }
-        .settings-item .title span { color: var(--text-dark); }
-        .settings-switch-item { display: flex; justify-content: space-between; align-items: center; padding: 16px; font-size: 15px; border-bottom: 1px solid var(--border-color); }
-        .settings-switch-item:last-child { border-bottom: none; }
-        .settings-switch-item .title { display: flex; align-items: center; font-weight: 500; }
-        .settings-switch-item .title span { font-size: 20px; margin-right: 12px; color: var(--text-dark); }
-        .settings-switch-item .description {
-            font-size: 12px;
-            color: var(--text-light);
-            padding-left: 32px; /* 對齊 icon 文字 */
-            margin-top: -8px;
-            padding-bottom: 10px;
+        .home-header {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
+        }
+        .app-name { font-size: 26px; font-weight: 800; color: var(--text-main); }
+        
+        .header-actions { display: flex; align-items: center; gap: 12px; }
+        
+        .user-badge {
+            font-size: 12px; background: #e8f8f5; color: var(--primary-color);
+            padding: 4px 8px; border-radius: 12px; font-weight: 600;
         }
 
-        .switch { position: relative; display: inline-block; width: 50px; height: 28px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; border-radius: 28px; transition: .4s; }
-        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; border-radius: 50%; transition: .4s; }
-        input:checked + .slider { background-color: #28a745; }
-        input:checked + .slider:before { transform: translateX(22px); }
+        /* 鈴鐺樣式 */
+        .notification-bell {
+            position: relative; cursor: pointer; width: 28px; height: 28px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        /* SVG Bell Icon */
+        .bell-icon svg {
+            width: 24px; height: 24px; stroke: #2c3e50; stroke-width: 2; fill: none;
+        }
+        .notification-badge {
+            position: absolute; top: -2px; right: -2px;
+            width: 14px; height: 14px;
+            background: red; color: white;
+            border-radius: 50%; font-size: 9px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; border: 1px solid white;
+        }
 
-        .logout-btn { background: #dc3545; color: white; text-align: center; font-weight: 600; border-radius: 12px; padding: 16px; cursor: pointer; transition: background-color 0.2s, transform 0.1s ease-out; }
-        .logout-btn:active { background: #c82333; transform: scale(0.98); }
+        .wallet-card {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white; padding: 24px; cursor: pointer;
+        }
+        .wallet-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px; }
+        .wallet-amount { font-size: 32px; font-weight: 700; }
+        .progress-bg { background: rgba(255,255,255,0.3); height: 8px; border-radius: 4px; overflow: hidden; margin-top: 8px; }
+        .progress-fill { background: #fff; height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+        
+        .transaction-item {
+            display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee;
+        }
+        .transaction-item:last-child { border-bottom: none; }
+        .t-icon { width: 36px; height: 36px; background: #f0f2f5; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-right: 12px; }
+        .t-info { flex: 1; }
+        .t-name { font-weight: 600; font-size: 14px; }
+        .t-date { font-size: 11px; color: #999; }
+        .t-amount { font-weight: bold; font-size: 14px; color: var(--text-main); }
+        .t-amount.expense { color: var(--text-main); }
 
         /* * ===============================================
-         * [★★★ 聊天室佈局 - 最終修正 ★★★]
+         * 通知中心樣式 (Notification Center)
          * ===============================================
          */
+        .noti-section-title {
+            font-size: 14px; color: #7f8c8d; margin: 20px 0 10px 0; font-weight: 600; padding-left: 5px;
+        }
+        .noti-item {
+            background: white; border-radius: 12px; padding: 15px; margin-bottom: 12px;
+            display: flex; gap: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #eee;
+        }
+        .noti-icon {
+            width: 40px; height: 40px; border-radius: 50%; background: #f0f2f5;
+            display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;
+        }
+        .noti-icon.security { background: #ffebeb; color: #e74c3c; }
+        .noti-icon.promo { background: #e8f8f5; color: var(--primary-color); }
+        
+        .noti-content { flex: 1; }
+        .noti-title { font-size: 14px; font-weight: bold; color: #333; margin-bottom: 4px; }
+        .noti-desc { font-size: 12px; color: #666; line-height: 1.4; }
+        .noti-time { font-size: 10px; color: #999; margin-top: 5px; text-align: right; }
+        
+        /* 活動推廣專用樣式 */
+        .event-card-img {
+            width: 100%; height: 120px; background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d); /* 模擬霓虹燈光感 */
+            border-radius: 8px; margin-bottom: 10px; display: flex; align-items: center; justify-content: center;
+            color: white; font-weight: bold; font-size: 18px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            position: relative; overflow: hidden;
+        }
+        .event-card-img::after {
+            content: 'Cardif NEXT Lab'; position: absolute; bottom: 10px; left: 10px; font-size: 20px; font-style: italic;
+        }
+        .event-tags { display: flex; gap: 5px; margin-bottom: 8px; flex-wrap: wrap; }
+        .event-tag { font-size: 10px; background: #eee; padding: 2px 6px; border-radius: 4px; color: #555; }
 
-        /* 聊天內容區 */
-        .chat-container {
-            flex-grow: 1; /* ★ 填滿空間 */
-            overflow-y: auto; /* ★ 內部滾動 */
-            -webkit-overflow-scrolling: touch;
-            padding: 10px 18px; /* ★ 上下左右 padding */
-        }
-        
-        .chat-bubble { max-width: 80%; padding: 12px 16px; border-radius: 20px; line-height: 1.5; font-size: 15px; margin-bottom: 12px; }
-        .chat-bubble.bot { background-color: var(--border-color); color: #000; align-self: flex-start; border-bottom-left-radius: 4px; }
-        .chat-bubble.user { background-color: var(--primary-color); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
-        
-        /* 聊天輸入框 */
-        .chat-input-bar { 
-            position: relative; /* ★ 作為 Flex item */
-            height: 70px; 
-            background: #fff; 
-            border-top: 1px solid #ddd; 
-            display: flex; 
-            align-items: center; 
-            padding: 10px 18px 25px 18px; /* ★ 內部 padding */
-            box-sizing: border-box; 
-            flex-shrink: 0; /* ★ 高度固定 */
-        }
-        
-        .chat-input { flex-grow: 1; height: 40px; border: 1px solid #ccc; border-radius: 20px; padding: 0 15px; font-size: 15px; }
-        .chat-send-btn { margin-left: 10px; background: none; border: none; font-size: 24px; color: var(--primary-color); cursor: pointer; }
-        
         /* * ===============================================
-         * [其他子頁面樣式] (保持不變)
+         * 投資頁元件
          * ===============================================
          */
-         .report-summary-card { background: #e6f7ff; border: 1px solid #91d5ff; text-align: center; }
-         .report-summary-card .score { font-size: 48px; font-weight: 700; color: var(--primary-dark); line-height: 1; }
-         .report-summary-card .score-label { font-size: 16px; font-weight: 600; color: var(--primary-dark); margin-bottom: 15px; }
-         .report-summary-card .description { font-size: 14px; line-height: 1.6; }
-         .chart-container {
-            width: 100%;
-            height: 200px;
-            margin-top: 10px;
-         }
-         .doughnut-chart-container {
-            width: 100%;
-            max-width: 250px;
-            height: 250px;
-            margin: 10px auto 0 auto;
-         }
+        .risk-selector { display: flex; gap: 10px; margin-bottom: 20px; background: #e0e0e0; padding: 4px; border-radius: 12px; }
+        .risk-btn { flex: 1; padding: 10px; border-radius: 10px; text-align: center; font-size: 13px; cursor: pointer; transition: all 0.3s; color: #666; font-weight: 500; }
+        .risk-btn.active { background: white; color: var(--text-main); font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
 
-        .logout-screen { text-align: center; }
-        .logout-screen .icon { font-size: 64px; }
-        .logout-screen h2 { color: #fff; font-size: 24px; margin: 20px 0; }
-        .logout-screen p { color: #fff; opacity: 0.8; font-size: 16px; margin-bottom: 30px; }
-        .login-again-btn { background: #fff; color: var(--primary-dark); font-weight: 600; border-radius: 12px; padding: 16px 30px; cursor: pointer; transition: all 0.15s ease-out; text-decoration: none; font-size: 16px; }
-        .login-again-btn:active { transform: scale(0.95); }
+        .identity-card { background: white; border-radius: 20px; padding: 20px 25px; margin-bottom: 20px; position: relative; overflow: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; transition: background 0.3s; }
+        .identity-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: #ccc; transition: background 0.3s; }
+        .identity-content { z-index: 2; }
+        .identity-label { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; color: #666; font-weight: 600; }
+        .identity-value { font-size: 22px; font-weight: 800; color: #333; line-height: 1.2; }
+        .identity-watermark { font-size: 60px; position: absolute; right: 15px; bottom: -10px; opacity: 0.15; transform: rotate(-10deg); z-index: 1; transition: all 0.3s; }
 
-        .faq-item {
-            background: #fff;
-            border-radius: 12px;
-            margin-bottom: 10px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-            overflow: hidden;
+        .allocation-legend { margin-top: 15px; }
+        .legend-item { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; border-bottom: 1px dashed #eee; padding-bottom: 4px; }
+        .legend-color { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+
+        /* * ===============================================
+         * 獎勵頁元件
+         * ===============================================
+         */
+        .level-dashboard {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            border-radius: 20px; padding: 20px; color: white;
+            box-shadow: 0 10px 20px rgba(44, 62, 80, 0.3); margin-bottom: 20px;
+            position: relative; overflow: hidden;
         }
-        .faq-item-header {
-            padding: 18px;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .faq-item-header:active {
-            background-color: var(--border-color);
-        }
-        .faq-item-header::after {
-            content: '+';
-            font-size: 20px;
-            color: var(--primary-color);
-            transition: transform 0.3s ease;
-        }
-        .faq-item.active .faq-item-header::after {
-            transform: rotate(45deg);
-        }
-        .faq-item-body {
-            padding: 0 18px 18px 18px;
-            font-size: 14px;
-            line-height: 1.6;
-            color: #555;
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease-out, padding 0.3s ease-out;
-        }
-        .faq-item.active .faq-item-body {
-            max-height: 200px; /* 展開高度 */
-        }
+        .level-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; }
+        .level-avatar { width: 50px; height: 50px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 24px; border: 3px solid var(--primary-color); }
+        .level-info { flex: 1; margin-left: 15px; }
+        .level-title { font-size: 18px; font-weight: 800; margin-bottom: 2px; }
+        .level-coin { color: #f1c40f; font-weight: bold; font-size: 14px; }
         
-        .rewards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .reward-card {
-            background: #fff;
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 0;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.15s ease-out;
-            overflow: hidden;
-        }
-        .reward-card:active { transform: scale(0.96); box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
-        .reward-card .icon { font-size: 48px; margin: 20px 0 10px 0; }
-        .reward-card .title { font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--text-dark); }
-        .reward-card .cost { font-size: 13px; color: var(--primary-color); font-weight: 500; margin-bottom: 15px; }
+        .xp-container { margin-bottom: 15px; }
+        .xp-text { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px; opacity: 0.8; }
+        .xp-bar-bg { width: 100%; height: 10px; background: rgba(255,255,255,0.2); border-radius: 5px; overflow: hidden; }
+        .xp-bar-fill { height: 100%; background: linear-gradient(90deg, #00b09b, #96c93d); width: 50%; border-radius: 5px; transition: width 1s ease; }
+        .xp-condition { font-size: 10px; color: #bdc3c7; text-align: right; margin-top: 3px; }
 
-         .form-group {
-            margin-bottom: 20px;
-         }
-         .form-group label {
-            font-size: 14px;
-            font-weight: 500;
-            color: #555;
-            display: block;
-            margin-bottom: 8px;
-         }
-         .form-group input {
-            width: 100%;
-            height: 44px;
-            padding: 0 15px;
-            font-size: 15px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            box-sizing: border-box;
-         }
-         .form-button {
-            background: var(--primary-color);
-            color: white;
-            width: 100%;
-            height: 48px;
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.15s ease-out;
-         }
-         .form-button:active {
-            background: var(--primary-dark);
-            transform: scale(0.98);
-         }
+        .mini-map { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; position: relative; padding: 0 10px; }
+        .mini-map::before { content: ''; position: absolute; top: 50%; left: 20px; right: 20px; height: 2px; background: rgba(255,255,255,0.3); z-index: 0; }
+        .map-point { width: 30px; height: 30px; border-radius: 50%; background: #7f8c8d; display: flex; align-items: center; justify-content: center; font-size: 14px; position: relative; z-index: 1; border: 2px solid #34495e; }
+        .map-point.active { background: #f1c40f; border-color: white; transform: scale(1.2); box-shadow: 0 0 10px #f1c40f; }
+        .map-point.locked { background: #95a5a6; color: #555; }
+        .map-point span { position: absolute; bottom: -20px; width: 60px; text-align: center; font-size: 9px; color: #bdc3c7; }
+
+        .mission-tabs { display: flex; border-bottom: 1px solid #eee; margin-bottom: 15px; }
+        .mission-tab-btn { flex: 1; padding: 12px; background: none; border: none; font-size: 14px; color: #7f8c8d; font-weight: 600; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.3s; }
+        .mission-tab-btn.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+        .mission-panel { display: none; animation: fadeIn 0.3s; }
+        .mission-panel.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .quest-item { display: flex; align-items: center; justify-content: space-between; background: #f9f9f9; padding: 12px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #eee; }
+        .quest-icon { font-size: 24px; margin-right: 12px; width: 30px; text-align: center; }
+        .quest-info h4 { margin: 0 0 4px 0; font-size: 14px; color: #333; }
+        .quest-info p { margin: 0; font-size: 11px; color: var(--primary-color); font-weight: bold; }
+        .quest-action-btn { background: var(--primary-color); color: white; border: none; padding: 6px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; }
+        .quest-action-btn.disabled { background: #ccc; cursor: default; }
+
+        .badge-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 10px 0; }
+        .badge-item { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 10px; border-radius: 10px; background: #fdfdfd; border: 1px solid #eee; }
+        .badge-icon { width: 50px; height: 50px; border-radius: 50%; background: #eee; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 8px; filter: grayscale(100%); opacity: 0.5; border: 2px solid #ddd; }
+        .badge-item.unlocked .badge-icon { filter: grayscale(0%); opacity: 1; background: #fff; border-color: #f1c40f; box-shadow: 0 0 10px rgba(241, 196, 15, 0.3); }
+        .badge-name { font-size: 11px; font-weight: bold; color: #555; margin-bottom: 2px; }
+        .badge-desc { font-size: 9px; color: #999; }
+
+        .vip-zone { background: var(--vip-bg); border-radius: 20px; padding: 20px; margin-bottom: 25px; color: #fff; box-shadow: 0 10px 25px rgba(20, 30, 48, 0.4); position: relative; overflow: hidden; border: 1px solid rgba(255, 215, 0, 0.2); }
+        .vip-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid rgba(212, 175, 55, 0.3); padding-bottom: 10px; }
+        .vip-title { font-size: 18px; font-weight: 800; color: var(--vip-gold); display: flex; align-items: center; }
+        .vip-condition { font-size: 11px; background: rgba(212, 175, 55, 0.2); color: var(--vip-gold); padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(212, 175, 55, 0.5); }
+        .vip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .vip-item { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 10px; text-align: center; position: relative; border: 1px solid rgba(255,255,255,0.1); }
+        .vip-lock-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 12px; z-index: 5; backdrop-filter: blur(2px); }
+        .lock-icon { font-size: 24px; margin-bottom: 5px; }
+        .lock-text { font-size: 10px; color: #ddd; }
+
+        .general-zone {}
+        .general-title { font-size: 18px; font-weight: 700; margin-bottom: 12px; color: var(--text-main); display: flex; align-items: center; }
+        .general-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .general-item { background: #fff; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05); position: relative; border: 1px solid #f0f0f0; }
+        .general-btn { background: var(--primary-color); color: white; border: none; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-top: 8px; width: 100%; cursor: pointer; box-shadow: 0 3px 8px rgba(0, 145, 90, 0.2); }
+        .general-btn:active { transform: scale(0.95); }
+
+        /* * ===============================================
+         * 其他元件 (Wallet, Maps, etc.)
+         * ===============================================
+         */
+        #page-wallet-detail { display: none; flex-direction: column; }
+        #page-wallet-detail.active { display: flex; }
+        .confetti-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; z-index: 10; }
+        .confetti { position: absolute; font-size: 20px; animation: fall linear forwards; }
+        @keyframes fall { 0% { transform: translateY(-50px) rotate(0deg); opacity: 1; } 100% { transform: translateY(800px) rotate(360deg); opacity: 0; } }
+        .piggy-icon-container { width: 150px; height: 150px; margin-bottom: 20px; position: relative; }
+        .coin-drop { position: absolute; top: -40px; left: 50%; transform: translateX(-50%); font-size: 40px; animation: dropCoin 2s infinite; }
+        @keyframes dropCoin { 0% { top: -60px; opacity: 1; } 50% { top: 10px; opacity: 1; } 60% { top: 10px; opacity: 0; } 100% { top: 10px; opacity: 0; } }
+        .bottom-sheet { background: white; color: #333; border-top-left-radius: 24px; border-top-right-radius: 24px; padding: 30px 20px 40px 20px; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); animation: slideUp 0.5s cubic-bezier(0.25, 1, 0.5, 1); z-index: 50; margin-top: auto; width: 100%; box-sizing: border-box; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        .process-modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 200; display: none; justify-content: center; align-items: center; }
+        .process-card { background: white; width: 85%; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .step-item { display: flex; align-items: center; margin-bottom: 15px; opacity: 0.3; transition: all 0.5s; }
+        .step-item.active { opacity: 1; transform: translateX(5px); }
+        .step-icon { width: 30px; height: 30px; border-radius: 50%; background: #eee; display: flex; align-items: center; justify-content: center; margin-right: 15px; font-size: 14px; }
+        .step-item.active .step-icon { background: var(--primary-color); color: white; }
+        .step-text { font-size: 14px; font-weight: 500; }
+        .step-desc { font-size: 12px; color: #7f8c8d; }
+
+        .shield-stack-container { width: 100%; background: #f0f0f0; border-radius: 10px; height: 30px; display: flex; margin: 15px 0; overflow: hidden; position: relative; }
+        .stack-bar-savings { background: #3498db; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; width: 20%; }
+        .stack-bar-insurance { background: rgba(255, 165, 0, 0.6); height: 100%; display: flex; align-items: center; justify-content: center; color: #d35400; font-size: 10px; font-weight: bold; width: 80%; position: relative; }
+        .stack-bar-insurance::after { content: '🛡️'; position: absolute; right: 10px; }
+        .pass-card { background: white; text-align: center; padding: 30px 20px; border-radius: 20px; border: 2px dashed var(--primary-color); }
+        #qrcode { margin: 20px auto; display: flex; justify-content: center; }
+        .pass-serial { font-family: monospace; letter-spacing: 2px; color: #333; background: #eee; padding: 5px; margin-top: 10px; display: inline-block;}
+        
+        .game-map-container { display: flex; flex-direction: column; align-items: center; padding: 20px 0; }
+        .map-node { width: 70px; height: 70px; border-radius: 50%; background: #bdc3c7; display: flex; align-items: center; justify-content: center; font-size: 30px; color: white; position: relative; margin-bottom: 40px; box-shadow: 0 5px 0 #95a5a6; z-index: 2; }
+        .map-node.active { background: #f1c40f; box-shadow: 0 5px 0 #f39c12; animation: bounce 2s infinite; }
+        .map-node.completed { background: var(--primary-color); box-shadow: 0 5px 0 var(--primary-dark); }
+        .map-node.locked { background: #e0e0e0; color: #999; box-shadow: 0 5px 0 #ccc; }
+        .map-node::after { content: ''; position: absolute; top: 75px; width: 4px; height: 40px; background: #ddd; z-index: 1; }
+        .map-node:last-child::after { display: none; }
+        .map-label { position: absolute; top: -25px; background: white; padding: 4px 8px; border-radius: 10px; font-size: 12px; font-weight: bold; color: #333; white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        @keyframes bounce { 0%, 20%, 50%, 80%, 100% {transform: translateY(0);} 40% {transform: translateY(-10px);} 60% {transform: translateY(-5px);} }
+        .modal-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: none; justify-content: center; align-items: center; }
+        .modal-card { background: white; width: 80%; padding: 20px; border-radius: 20px; text-align: center; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes popIn { from {transform: scale(0.5); opacity: 0;} to {transform: scale(1); opacity: 1;} }
+        .chat-container { flex-grow: 1; overflow-y: auto; padding: 15px; background: #f0f2f5; display: flex; flex-direction: column; }
+        .chat-bubble { max-width: 80%; padding: 12px; border-radius: 16px; margin-bottom: 12px; font-size: 14px; line-height: 1.4; position: relative; }
+        .chat-bubble.bot { background: #fff; color: #333; border-bottom-left-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); align-self: flex-start; }
+        .chat-bubble.user { background: #3498db; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+        .chat-bubble.agent { background: #f1c40f; color: #333; border-bottom-left-radius: 4px; align-self: flex-start; border: 1px solid #f39c12;}
+        .chat-system-msg { text-align: center; font-size: 12px; color: #999; margin: 10px 0; }
+        .chat-options { display: flex; gap: 10px; justify-content: center; margin-bottom: 10px; }
+        .chat-option-btn { background: var(--accent-color); color: white; border: none; padding: 8px 15px; border-radius: 20px; font-size: 12px; cursor: pointer; }
+        .nav-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 70px; background: #fff; border-top: 1px solid #eee; display: flex; justify-content: space-around; align-items: center; padding-bottom: 10px; z-index: 20; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; color: #95a5a6; cursor: pointer; font-size: 10px; }
+        .nav-item.active { color: var(--primary-color); }
+        .nav-item span { font-size: 22px; margin-bottom: 4px; }
+        .settings-list .list-item { padding: 15px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; font-size: 15px; cursor: pointer; }
+        .list-item:last-child { border-bottom: none; }
+        .list-action { color: var(--primary-color); font-size: 13px; }
+        .risk-select-item { padding: 15px; border: 1px solid #eee; border-radius: 12px; margin-bottom: 10px; cursor: pointer; text-align: left; font-weight: 500; display: flex; align-items: center; }
+        .risk-select-item:active { background: #f0f2f5; }
+        .risk-select-item span { font-size: 20px; margin-right: 10px; }
 
     </style>
 </head>
 <body>
 
     <div class="phone-mockup">
-        
         <div class="screen">
 
-            <div id="page-home" class="page active"> 
-                <div class="card assistant-card" data-target="page-travel-recommendation"> 
-                    <h3><span>🤖</span> AI 助理 小P 關心您</h3>
-                    <p>
-                        王先生，偵測到您下週將前往日本，系統已自動為您試算「海外突發傷病」保障缺口。
-                        <a href="#" data-target="page-travel-recommendation" 
-                           data-title="海外突發傷病" 
-                           data-product-name="環球旅平卡 (海外醫療)" 
-                           data-product-icon="✈️">點此查看建議方案 &raquo;
-                        </a>
-                    </p>
+            <div id="page-home" class="page active">
+                <div class="page-title" style="display: flex; justify-content: space-between; align-items: center;">
+                    Cardif NEXT
+                    <div style="display:flex; align-items:center; gap: 10px;">
+                        <div style="font-size: 12px; background: #e8f8f5; color: var(--primary-color); padding: 4px 8px; border-radius: 12px;">準客戶</div>
+                        <div class="notification-bell" data-target="page-notifications">
+                            <div class="bell-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                                </svg>
+                            </div>
+                            <div class="notification-badge">N</div>
+                        </div>
+                    </div>
                 </div>
+
+                <div class="card wallet-card" data-target="page-wallet-detail">
+                    <div class="wallet-header">
+                        <div class="wallet-target">目標: $3,000 / 月</div>
+                        <div style="font-size: 20px;">🏦</div>
+                    </div>
+                    <div class="wallet-amount">$ 3,000</div>
+                    <div class="progress-bg">
+                        <div class="progress-fill" style="width: 100%;"></div>
+                    </div>
+                    <div style="font-size: 12px; margin-top: 5px; opacity: 0.8;">虛擬錢包累積中 (尚未扣款) ></div>
+                </div>
+
+                <div class="section-title">AI 消費洞察</div>
+                <div class="card insight-card" data-target="page-analysis" style="border-left: 5px solid var(--accent-color);">
+                    <div style="font-size: 15px; margin-bottom: 8px;">
+                        ☕ <strong>本月「手搖飲」支出警示</strong>
+                    </div>
+                    <p style="font-size: 13px; color: var(--text-sub); margin: 0 0 10px 0;">
+                        您本月已累積 <span style="color:var(--accent-color); font-weight:bold;">$3,000</span> 零錢。
+                    </p>
+                    <div style="background: #fdf0e6; padding: 10px; border-radius: 8px; font-size: 12px; color: #d35400;">
+                        💡 <strong>AI 建議：</strong> 這些錢其實可以做更多事！點擊上方錢包查看。
+                    </div>
+                </div>
+
+                <div class="section-title" style="margin-top:20px;">
+                    <div>📝 記帳快手</div>
+                    <div style="font-size:20px; color:var(--primary-color); cursor:pointer;">+</div>
+                </div>
+                <div class="card" style="padding: 10px 20px;">
+                    <div class="transaction-item">
+                        <div style="display:flex; align-items:center;">
+                            <div class="t-icon">🍜</div>
+                            <div class="t-info">
+                                <div class="t-name">Sukiya 牛丼</div>
+                                <div class="t-date">10/29 晚餐</div>
+                            </div>
+                        </div>
+                        <div class="t-amount expense">-$ 139</div>
+                    </div>
+                    <div class="transaction-item">
+                        <div style="display:flex; align-items:center;">
+                            <div class="t-icon">🥤</div>
+                            <div class="t-info">
+                                <div class="t-name">50嵐</div>
+                                <div class="t-date">10/29 飲料</div>
+                            </div>
+                        </div>
+                        <div class="t-amount expense">-$ 55</div>
+                    </div>
+                    <div class="transaction-item">
+                        <div style="display:flex; align-items:center;">
+                            <div class="t-icon">🚇</div>
+                            <div class="t-info">
+                                <div class="t-name">捷運加值</div>
+                                <div class="t-date">10/28 交通</div>
+                            </div>
+                        </div>
+                        <div class="t-amount expense">-$ 300</div>
+                    </div>
+                    <div style="text-align:center; padding-top:10px; font-size:12px; color:#999; cursor:pointer;">查看更多紀錄 v</div>
+                </div>
+
+                <div class="card" style="background: linear-gradient(90deg, #2c3e50, #4ca1af); color: white; cursor: pointer;" data-target="page-pass">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: bold; font-size: 16px;">Cardif Pass 通關碼</div>
+                            <div style="font-size: 12px; opacity: 0.8;">前往分行一鍵開戶</div>
+                        </div>
+                        <div style="font-size: 24px;">🚀</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-notifications" class="page sub-page">
+                <div class="back-button" data-target="page-home">&lsaquo;</div>
+                <div class="sub-page-title">通知中心</div>
                 
-                <div class="main-metrics-container">
-                    <div class="card premium-value">
-                        <h4>我的退休保障金</h4>
-                        <div class="value">$ 3,150</div>
-                        <p class="description">
-                            您本月累積的健康積分，已為您的長照險累計折抵 $3,150 元保費。
+                <div class="noti-section-title">🔒 安全性通知</div>
+                <div class="noti-item">
+                    <div class="noti-icon security">⚠️</div>
+                    <div class="noti-content">
+                        <div class="noti-title">登入提醒</div>
+                        <div class="noti-desc">您的帳戶於 2025-10-29 10:30 在新裝置登入。</div>
+                        <div class="noti-time">2 小時前</div>
+                    </div>
+                </div>
+
+                <div class="noti-section-title">📢 活動推廣</div>
+                
+                <div class="noti-item" style="display:block;">
+                    <div class="event-card-img">
+                        Cardif NEXT Lab
+                    </div>
+                    <div class="noti-content">
+                        <div class="noti-title">線下活動：未來財富實驗室</div>
+                        <div class="event-tags">
+                            <span class="event-tag">#沉浸式體驗</span>
+                            <span class="event-tag">#零推銷場域</span>
+                            <span class="event-tag">#社群打卡</span>
+                        </div>
+                        <div class="noti-desc">
+                            體驗行銷 x 品牌年輕化！我們不賣保單，只聊夢想。提供「財富體質檢測」與免費咖啡，快來互動遊戲取代嚴肅問卷，讓法巴變「酷」！
+                        </div>
+                        <button class="general-btn" style="margin-top:10px;">立即報名</button>
+                        <div class="noti-time">剛剛</div>
+                    </div>
+                </div>
+
+                <div class="noti-item">
+                    <div class="noti-icon promo">🎉</div>
+                    <div class="noti-content">
+                        <div class="noti-title">線上講座：Z世代投資術</div>
+                        <div class="noti-desc">邀請知名理財網紅分享如何用小錢滾出第一桶金。</div>
+                        <div class="noti-time">昨天</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-wallet-detail" class="page sub-page" style="background: linear-gradient(135deg, #00915a, #2c3e50); color: white; padding: 0;">
+                <div class="back-button" data-target="page-home" style="color: white; top: 45px;">&lsaquo;</div>
+                <div class="confetti-container" id="confetti-container"></div>
+                
+                <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 180px;">
+                    
+                    <div class="piggy-icon-container">
+                        <div class="coin-drop">🪙</div>
+                        <svg width="150" height="150" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+                           <path d="M428.1 190.4C428.1 190.4 438 152.1 416.7 125.8C395.4 99.5 358.5 106.6 358.5 106.6C325.8 71.1 270.4 56.9 203.7 66.8C101.4 82.1 40.3 161.7 25 264C22.2 282.9 22.9 301.2 26.5 318.5L25.9 318.6C12.1 321.4 2.80005 334.8 5.60005 348.6L14.4 391.2C17.2 405 30.6 414.3 44.4 411.5L83.7 403.4C90.2 431.1 106.2 453.9 129.4 466.8L120.7 482.4C113.8 494.6 118 509.9 130.2 516.8C142.4 523.7 157.7 519.5 164.6 507.3L175.7 487.6C200.7 493.6 228 493.9 255.6 489.8C255.6 489.8 255.6 489.8 255.7 489.8C279.7 486.2 301.8 478.4 321.1 467.5L327.9 483.5C333.3 496.3 348.2 502.3 361 496.9C373.8 491.5 379.8 476.6 374.4 463.8L366.5 445.3C397.6 418.5 418.5 379.9 423.5 336.5C423.5 336.5 453.3 323.7 459 292.5C464.7 261.3 428.1 247.1 428.1 247.1C433.8 234.3 433.8 206 428.1 190.4ZM246.4 121.8C265.7 118.9 281.4 132.3 281.4 132.3C281.4 132.3 268 148 248.7 150.9C229.4 153.8 213.7 140.4 213.7 140.4C213.7 140.4 227.1 124.7 246.4 121.8Z" fill="#F4A261"/>
+                           <path d="M250 145 L215 135" stroke="#E76F51" stroke-width="10" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+
+                    <h2 style="font-size: 24px; margin: 10px 0;">本月虛擬累積</h2>
+                    <div style="font-size: 48px; font-weight: 800; margin-bottom: 20px;">$ 3,000</div>
+                    
+                    <div style="width: 80%; text-align: center;">
+                        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px;">
+                            <span>$0</span>
+                            <span>$3,000</span>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.3); height: 12px; border-radius: 6px; overflow: hidden;">
+                            <div style="width: 100%; height: 100%; background: #f1c40f; border-radius: 6px; box-shadow: 0 0 10px #f1c40f;"></div>
+                        </div>
+                        <div style="margin-top: 15px; font-size: 13px; opacity: 0.9; line-height: 1.6;">
+                            太棒了！您透過記帳已「虛擬」存下了這筆錢。<br>現在，讓它變成真的財富吧！✨
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bottom-sheet">
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 10px;">🎉 恭喜達標！</div>
+                        <p style="color: #666; font-size: 14px; margin-bottom: 25px; line-height: 1.5;">
+                            是否授權將 <strong style="color: var(--primary-color);">$3,000</strong> 轉入法巴投資帳戶？<br>
+                            讓這筆錢開始為您的夢想工作！
                         </p>
-                    </div>
-
-                    <div class="card health-score">
-                        <h4>即時健康追蹤</h4>
-                        <div class="health-item">
-                            <span>今日步數</span>
-                            <span class="status-ok">8,120 / 8,000 &checkmark;</span>
-                        </div>
-                        <div class="health-item">
-                            <span>昨晚睡眠</span>
-                            <span class="status-warn">6.5 小時 </span>
-                        </div>
-                        <div class="health-item">
-                            <span>本週有氧任務 (3次)</span>
-                            <span class="task-progress">1 / 3</span>
-                        </div>
-                        <div class="details-link-container">
-                            <a class="details-link" data-target="page-health-report">點我查看詳細健康報告 &raquo;</a>
+                        <button class="btn-primary" onclick="showProcessModal()" style="box-shadow: 0 10px 20px rgba(0, 145, 90, 0.3);">
+                            確認授權，繼續下一步
+                        </button>
+                        <div style="margin-top: 15px; font-size: 12px; color: #999; text-decoration: underline; cursor: pointer;" data-target="page-home">
+                            稍後再說
                         </div>
                     </div>
                 </div>
-
-                <div class="card coverage-dashboard">
-                    <div class="section-title">終身保障儀表板</div>
-                    <div class="coverage-grid">
-                        <div class="coverage-item" data-target="page-coverage-detail" 
-                             data-title="基礎醫療" 
-                             data-product-name="實支實付Pro (醫療)" 
-                             data-product-icon="🩺">
-                            <div class="icon">🩺</div>
-                            <div class="title">基礎醫療</div>
-                            <div class="status status-good">保障充足</div>
-                        </div>
-                        <div class="coverage-item" data-target="page-coverage-detail" 
-                             data-title="意外 / 傷殘"
-                             data-product-name="全方位意外險 (傷殘)"
-                             data-product-icon="🩹">
-                            <div class="icon">🩹</div>
-                            <div class="title">意外 / 傷殘</div>
-                            <div class="status status-good">保障充足</div>
-                        </div>
-                        <div class="coverage-item" data-target="page-coverage-detail" 
-                             data-title="家庭責任 (壽險)"
-                             data-product-name="安家30 (壽險)"
-                             data-product-icon="👨‍👩‍👧‍👦">
-                            <div class="icon">👨‍👩‍👧‍👦</div>
-                            <div class="title">家庭責任 (壽險)</div>
-                            <div class="status status-review">建議檢視</div>
-                        </div>
-                        <div class="coverage-item" data-target="page-coverage-detail" 
-                             data-title="重大疾病 / 癌症"
-                             data-product-name="醫靠鍾身 (重疾)"
-                             data-product-icon="❤️">
-                            <div class="icon">❤️</div>
-                            <div class="title">重大疾病 / 癌症</div>
-                            <div class="status status-urgent">保障嚴重不足</div>
-                        </div>
-                        <div class="coverage-item" data-target="page-coverage-detail" 
-                             data-title="退休金流 (理財)"
-                             data-product-name="金富滿堂 (儲蓄)"
-                             data-product-icon="🏖️">
-                            <div class="icon">🏖️</div>
-                            <div class="title">退休金流 (理財)</div>
-                            <div class="status status-plan">尚待規劃</div>
-                        </div>
-                        <div class="coverage-item" data-target="page-coverage-detail" 
-                             data-title="長照 / 傳承"
-                             data-product-name="長照久久 (長照)"
-                             data-product-icon="🏦">
-                            <div class="icon">🏦</div>
-                            <div class="title">長照 / 傳承</div>
-                            <div class="status status-urgent">保障嚴重不足</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="card financial-planning">
-                    <div class="section-title">家庭資產配置</div>
-                    <div class="clickable-list-item plan-item" data-target="page-financial-education">
-                        <div class="title"><span>🎓</span> 子女教育金試算</div>
-                        <div class="arrow">&rsaquo;</div>
-                    </div>
-                    <div class="clickable-list-item plan-item" data-target="page-financial-retirement">
-                        <div class="title"><span>🏖️</span> 退休金規劃</div>
-                        <div class="arrow">&rsaquo;</div>
-                    </div>
-                    <div class="clickable-list-item plan-item" data-target="page-financial-investment">
-                        <div class="title"><span>📈</span> 投資組合建議</div>
-                        <div class="arrow">&rsaquo;</div>
-                    </div>
-                </div>
-            </div> 
-            
-            <div id="page-tasks" class="page"> 
-                 <div class="page-title">🎯 健康任務</div>
-                
-                <div class="card streak-card" data-target="page-rewards-store">
-                    <div class="icon">🔥</div>
-                    <h3>連續打卡 5 天</h3>
-                    <p>做得好！繼續保持，朝 7 天目標邁進！</p>
-                </div>
-                <div class="card task-card daily">
-                    <h4>每日任務</h4>
-                    <div class="task-item">
-                        <div>每日 8,000 步 (8,120 / 8,000)</div>
-                        <div class="progress-bar"><div class="progress-fill" style="width: 100%;"></div></div>
-                    </div>
-                    <div class="task-item">
-                        <div>7 小時睡眠 (6.5 / 7)</div>
-                        <div class="progress-bar"><div class="progress-fill" style="width: 90%;"></div></div>
-                    </div>
-                </div>
-                <div class="card task-card event" data-target="page-task-event-detail">
-                    <h4>特別挑戰：十月健走賽</h4>
-                    <div class="task-item">
-                        <div>累積 10 萬步 (35,200 / 100,000)</div>
-                        <div class="progress-bar"><div class="progress-fill" style="width: 35.2%; background-color: #6f42c1;"></div></div>
-                    </div>
-                </div>
-                <div class="card task-card weekly">
-                    <h4>每週挑戰</h4>
-                    <div class="task-item">
-                        <div>3 次 30 分鐘有氧運動 (1/3)</div>
-                        <div class="progress-bar"><div class="progress-fill" style="width: 33.3%; background-color: #fd7e14;"></div></div>
-                    </div>
-                    <div class="task-item">
-                        <div>分享健康餐盤 (0/2)</div>
-                        <div class="progress-bar"><div class="progress-fill" style="width: 0%; background-color: #fd7e14;"></div></div>
-                    </div>
-                </div>
-                <div class="card task-rewards">
-                    <h4>任務獎勵 </h4>
-                    <div class="reward-item" data-target="page-rewards-store"><span>☕</span> 7-11 咖啡券 (尚需 200 積分)</div>
-                    <div class="reward-item" data-target="page-rewards-store"><span>💰</span> $150 元保費折抵金 (已累積)</div>
-                    <div class="details-link-container">
-                        <a class="details-link" data-target="page-rewards-store">查看所有可兌換獎品 &raquo;</a>
-                    </div>
-                </div>
-            </div> 
-
-            <div id="page-policies" class="page"> 
-                <div class="page-title">📄 我的保單</div>
-                <div class="card policy-summary-card">
-                    <h3>AI 保單管家</h3>
-                    <div class="policy-count">5 份</div>
-                    <p class="description">AI 已自動為您整合所有保單</p>
-                </div>
-                <div class="card policy-gap-card" data-target="page-coverage-detail" data-title="重大疾病 / 癌症" data-product-name="醫靠鍾身 (重疾)" data-product-icon="❤️">
-                    <div class="icon">💡</div>
-                    <div class="text">
-                        <strong>AI 發現保障缺口：</strong>
-                        您的「重大疾病」與「長照」保障嚴重不足。
-                        <a href="#" data-target="page-coverage-detail" data-title="重大疾病 / 癌症" data-product-name="醫靠鍾身 (重疾)" data-product-icon="❤️">點此查看 AI 建議 &raquo;</a>
-                    </div>
-                </div>
-                <div class="section-title">依保障目的分類</div>
-                <div class="policy-category"><div class="policy-category-header" data-target="page-policy-list" data-title="基礎醫療"><div class="title"><span>🩺</span> 基礎醫療</div><div class="status status-good">2 份 (充足)</div></div></div>
-                <div class="policy-category"><div class="policy-category-header" data-target="page-policy-list" data-title="意外 / 傷殘"><div class="title"><span>🩹</span> 意外 / 傷殘</div><div class="status status-good">1 份 (充足)</div></div></div>
-                <div class="policy-category"><div class="policy-category-header" data-target="page-policy-list" data-title="家庭責任 (壽險)"><div class="title"><span>👨‍👩‍👧‍👦</span> 家庭責任 (壽險)</div><div class="status status-review">2 份 (建議檢視)</div></div></div>
-                <div class="policy-category"><div class="policy-category-header" data-target="page-policy-list" data-title="重大疾病 / 癌症"><div class="title"><span>❤️</span> 重大疾病 / 癌症</div><div class="status status-urgent">0 份 (嚴重不足)</div></div></div>
-                <div class="policy-category"><div class="policy-category-header" data-target="page-policy-list" data-title="長照 / 傳承"><div class="title"><span>🏦</span> 長照 / 傳承</div><div class="status status-urgent">0 份 (嚴重不足)</div></div></div>
-            </div> 
-
-            <div id="page-settings" class="page"> 
-                 <div class="page-title">⚙️ 設定</div>
-                <div class="section-title">帳戶</div>
-                <div class="settings-group">
-                    <div class="clickable-list-item settings-item" data-target="page-settings-profile">
-                        <div class="title"><span>👤</span> 個人資料</div><div class="arrow">&rsaquo;</div>
-					</div>
-
-                    <div class="clickable-list-item settings-item" data-target="page-settings-family">
-                        <div class="title"><span>👨‍👩‍👧‍👦</span> 家庭成員管理</div><div class="arrow">&rsaquo;</div>
-                    </div>
-
-                    <div class="clickable-list-item settings-item" data-target="page-settings-security">
-                        <div class="title"><span>🔒</span> 密碼與安全性</div><div class="arrow">&rsaquo;</div>
-                    </div>
-                </div>
-
-
-
-                <div class="section-title">資料與上傳</div>
-                <div class="settings-group">
-                    <div class="settings-switch-item">
-                        <div class="title"><span>❤️</span> Apple 健康</div>
-                        <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
-                    </div>
-
-                    <div class="settings-switch-item">
-                        <div class="title"><span>⌚</span> Garmin Connect</div>
-                        <label class="switch"><input type="checkbox"><span class="slider"></span></label>
-                    </div>
-
-                    <div class="clickable-list-item settings-item" data-target="page-settings-data">
-                        <div class="title"><span>🏥</span> 健保資料 (健康存摺)</div><div class="value">已連結</div>
-                    </div>
-
-                    <div class="clickable-list-item settings-item" data-target="page-settings-upload">
-                        <div class="title"><span>📤</span> 保單上傳 (PDF/JPG)</div>
-                        <div class="arrow">&rsaquo;</div>
-                    </div>
-                </div>
-
-                <div class="section-title">支援服務</div>
-                <div class="settings-group">
-					<div class="clickable-list-item settings-item" data-target="page-chatbot">
-                        <div class="title"><span>🤖</span> AI 助理 小P</div>
-                        <div class="arrow">&rsaquo;</div>
-                    </div>
-
-                    <div class="clickable-list-item settings-item" data-target="page-support-chat">
-                        <div class="title"><span>💬</span> 聯繫真人客服</div>
-                        <div class="arrow">&rsaquo;</div>
-                    </div>
-
-                    <div class="clickable-list-item settings-item" data-target="page-settings-faq">
-                        <div class="title"><span>❓</span> 常見問題 (FAQ)</div>
-                        <div class="arrow">&rsaquo;</div>
-                    </div>
-                </div>
-
-                <div class="section-title">應用程式</div>
-                <div class="settings-group">
-                    <div class="clickable-list-item settings-item" data-target="page-settings-notifications">
-                        <div class="title"><span>🔔</span> 通知設定</div>
-                        <div class="arrow">&rsaquo;</div>
-                    </div>
-
-                    <div class="clickable-list-item settings-item" data-target="page-settings-privacy">
-                        <div class="title"><span>🛡️</span> 隱私權與資料分享</div>
-                        <div class="arrow">&rsaquo;</div>
-                    </div>
-                </div>
-                <div class="logout-btn" data-target="page-logout">登出</div>
-            </div> 
-            
-            <div id="page-chatbot" class="page sub-page"> 
-                <div class="back-button" data-target="page-home">&lsaquo; 返回</div> 
-                <div class="page-title sub-page-title">🤖 AI 助理 小P</div>
-                <div class="chat-container">
-                    <div class="chat-bubble bot">您好，王先生！我是您的 AI 終身規劃師，有什麼可以協助您的嗎？</div>
-                    <div class="chat-bubble bot">您可以問我「我的長照保障夠嗎？」或「幫我規劃子女教育金」。</div>
-                    <div class="chat-bubble user">我上週的理賠申請被拒絕了，我很不高興！</div>
-                    <div class="chat-bubble bot">王先生，我理解您的沮喪。理賠問題較為複雜，我偵測到這需要立即處理。</div>
-                    <div class="chat-bubble bot">
-                        <b>[智能觸發]</b> 系統建議轉接真人「理賠專家」。<br>
-                        <b>[精準分流]</b> 我將為您匹配最適合的理賠顧問，省去您層層轉接的麻煩。
-                    </div>
-                    <div class="chat-bubble user">好，幫我轉接。</div>
-                    <div class="chat-bubble bot">
-                        <b>[無縫信息交接]</b> 好的，在您轉接前，我會將「您的保單號碼」、「理賠申請日期」及「您剛才的問題摘要」一併傳送給專家。
-                        <br><br>
-                        您無需重複說明，專家能立即進入狀況。
-                        <br>
-                        ... 正在為您轉接 ...
-                    </div>
-                    <div class="chat-bubble bot" style="cursor: pointer;" data-target="page-support-chat">
-                        已為您轉接至真人客服頁面。<br>
-                        <a href="#" data-target="page-support-chat">點此立即前往 &raquo;</a>
-                    </div>
-                    <div class="chat-bubble bot">補充說明，理賠流程通常需要...</div>
-                    <div class="chat-bubble user">了解。</div>
-                    <div class="chat-bubble bot">專家將會詳細檢視您的案件...</div>
-                    <div class="chat-bubble user">謝謝。</div>
-                    <div class="chat-bubble bot">不客氣，請稍候...</div>
-                    <div class="chat-bubble bot">轉接中...</div>
-                    <div class="chat-bubble bot">即將為您接通...</div>
-                </div>
-                <div class="chat-input-bar"><input type="text" class="chat-input" placeholder="輸入訊息..."><button class="chat-send-btn">➤</button></div>
             </div>
-            
-            <div id="page-support-chat" class="page sub-page"> 
-                <div class="back-button" data-target="page-settings">&lsaquo; 返回</div>
-                 <div class="page-title sub-page-title">真人客服 (理賠專家)</div>
+
+            <div id="process-modal" class="process-modal">
+                <div class="process-card">
+                    <h3 style="text-align: center; margin-bottom: 20px; color: var(--text-main);">資金調度執行中</h3>
+                    
+                    <div class="step-item" id="step-1">
+                        <div class="step-icon">🔗</div>
+                        <div>
+                            <div class="step-text">連線銀行帳戶</div>
+                            <div class="step-desc">安全驗證通道建立...</div>
+                        </div>
+                    </div>
+
+                    <div class="step-item" id="step-2">
+                        <div class="step-icon">💸</div>
+                        <div>
+                            <div class="step-text">執行 ACH 扣款</div>
+                            <div class="step-desc">轉出金額 $3,000</div>
+                        </div>
+                    </div>
+
+                    <div class="step-item" id="step-3">
+                        <div class="step-icon">📈</div>
+                        <div>
+                            <div class="step-text">申購基金組合</div>
+                            <div class="step-desc">買入：穩健成長號</div>
+                        </div>
+                    </div>
+
+                    <div class="step-item" id="step-4">
+                        <div class="step-icon">🛡️</div>
+                        <div>
+                            <div class="step-text">啟動防護網</div>
+                            <div class="step-desc">更新投資型保單保障額度</div>
+                        </div>
+                    </div>
+
+                    <button id="process-done-btn" class="btn-primary" style="display: none; margin-top: 20px;" data-target="page-invest" onclick="closeProcessModal()">
+                        完成！查看投資帳戶
+                    </button>
+                </div>
+            </div>
+
+            <div id="page-analysis" class="page">
+                <div class="page-title">消費與保障分析</div>
+                
+                <div class="card">
+                    <div class="section-title">🛡️ 夢想防護網 (Gap Analysis)</div>
+                    <p style="font-size: 13px; color: #666;">目標：出國留學基金 (100萬)</p>
+                    <div class="shield-stack-container">
+                        <div class="stack-bar-savings">已存 20萬</div>
+                        <div class="stack-bar-insurance">保險理賠補位 80萬</div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 10px;">
+                        <span style="color: #3498db;">● 目前資產</span>
+                        <span style="color: #d35400;">● 壽險防護</span>
+                    </div>
+                    <div style="background: #e8f8f5; border: 1px solid var(--primary-color); padding: 12px; border-radius: 8px; font-size: 13px; color: var(--primary-dark);">
+                        🤖 <strong>AI 提示卡：</strong><br>
+                        安心導航中。若發生風險，將啟動 <strong style="color: #d35400;">$80 萬</strong> 壽險理賠，確保「出國留學基金」目標達成。
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="section-title">本月支出結構</div>
+                    <div class="chart-container" style="height: 180px;">
+                        <canvas id="expenseChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-invest" class="page">
+                <div class="page-title">投資組合</div>
+
+                <div class="identity-card" id="identity-card">
+                    <div class="identity-content">
+                        <div class="identity-label">你是</div>
+                        <div class="identity-value" id="identity-text">穩健型投資人 (Balanced)</div>
+                    </div>
+                    <div class="identity-watermark" id="identity-icon">⚖️</div>
+                </div>
+
+                <div class="card">
+                    <div class="section-title">歷史模擬績效</div>
+                    <div class="chart-container" style="height: 200px;">
+                         <canvas id="fundChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="section-title">資產配置分佈</div>
+                    <div style="display: flex; align-items: center;">
+                        <div style="width: 50%; position: relative; height: 120px;">
+                             <canvas id="allocationChart"></canvas>
+                        </div>
+                        <div class="allocation-legend" id="allocation-legend" style="width: 50%; padding-left: 15px;">
+                            </div>
+                    </div>
+                </div>
+
+                <div class="card" style="display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center;">
+                        <div style="width: 40px; height: 40px; background: #f0f2f5; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                            🏦
+                        </div>
+                        <div>
+                            <div style="font-weight: bold; font-size: 14px;">連結銀行帳戶</div>
+                            <div style="font-size: 12px; color: #999;">用於定期定額扣款</div>
+                        </div>
+                    </div>
+                    <button class="btn-small" style="border: 1px solid var(--primary-color); color: var(--primary-color);" onclick="alert('模擬功能：將跳轉至網銀授權頁面')">連結</button>
+                </div>
+
+                <div style="text-align: center; color: #999; font-size: 10px; margin-top: 20px; padding-bottom: 20px;">
+                    * 投資一定有風險，過去績效不代表未來獲利。
+                </div>
+            </div>
+
+            <div id="page-rewards" class="page">
+                <div class="page-title">財商任務 & 獎勵</div>
+
+                <div class="level-dashboard">
+                    <div class="level-header">
+                        <div style="display:flex; align-items:center;">
+                            <div class="level-avatar">👶</div>
+                            <div class="level-info">
+                                <div class="level-title">Lv.1 新手村</div>
+                                <div class="level-coin">💰 500 XP</div>
+                            </div>
+                        </div>
+                        <div class="level-coin" style="font-size: 18px;">💎 500</div>
+                    </div>
+                    
+                    <div class="xp-container">
+                        <div class="xp-text">
+                            <span>EXP: 500 / 1000</span>
+                            <span>50%</span>
+                        </div>
+                        <div class="xp-bar-bg">
+                            <div class="xp-bar-fill"></div>
+                        </div>
+                        <div class="xp-condition">距 Lv.2 儲蓄之森 還差 500 XP</div>
+                    </div>
+
+                    <div class="mini-map">
+                        <div class="map-point active"><span>新手村</span>★</div>
+                        <div class="map-point locked"><span>儲蓄之森</span>🔒</div>
+                        <div class="map-point locked"><span>投資谷</span>🔒</div>
+                        <div class="map-point locked"><span>財富城</span>🔒</div>
+                    </div>
+                </div>
+
+                <div class="card" style="padding: 0; overflow: hidden;">
+                    <div class="mission-tabs">
+                        <button class="mission-tab-btn active" onclick="switchMissionTab('daily', this)">📅 每日</button>
+                        <button class="mission-tab-btn" onclick="switchMissionTab('weekly', this)">🗓️ 每週</button>
+                        <button class="mission-tab-btn" onclick="switchMissionTab('collection', this)">🏆 圖鑑</button>
+                    </div>
+
+                    <div id="panel-daily" class="mission-panel active" style="padding: 0 15px 15px 15px;">
+                        <div class="quest-item">
+                            <div style="display:flex; align-items:center;">
+                                <div class="quest-icon">📰</div>
+                                <div class="quest-info">
+                                    <h4>閱讀財經快訊</h4>
+                                    <p>+50 XP & 幣</p>
+                                </div>
+                            </div>
+                            <button class="quest-action-btn" data-target="page-news">Go</button>
+                        </div>
+                        <div class="quest-item">
+                            <div style="display:flex; align-items:center;">
+                                <div class="quest-icon">📝</div>
+                                <div class="quest-info">
+                                    <h4>填寫風險問卷</h4>
+                                    <p>+100 XP & 幣</p>
+                                </div>
+                            </div>
+                            <button class="quest-action-btn disabled">完成</button>
+                        </div>
+                    </div>
+
+                    <div id="panel-weekly" class="mission-panel" style="padding: 0 15px 15px 15px;">
+                        <div class="quest-item">
+                            <div style="display:flex; align-items:center;">
+                                <div class="quest-icon">📒</div>
+                                <div class="quest-info">
+                                    <h4>記帳達人 (0/3)</h4>
+                                    <p>連續記帳 3 天 (+150 XP)</p>
+                                </div>
+                            </div>
+                            <button class="quest-action-btn disabled">0/3</button>
+                        </div>
+                        <div class="quest-item">
+                            <div style="display:flex; align-items:center;">
+                                <div class="quest-icon">💰</div>
+                                <div class="quest-info">
+                                    <h4>存錢挑戰</h4>
+                                    <p>累積虛擬儲蓄 $500 (+200 XP)</p>
+                                </div>
+                            </div>
+                            <button class="quest-action-btn" data-target="page-home">Go</button>
+                        </div>
+                    </div>
+
+                    <div id="panel-collection" class="mission-panel" style="padding: 0 15px 15px 15px;">
+                        <div class="badge-grid">
+                            <div class="badge-item unlocked">
+                                <div class="badge-icon">👶</div>
+                                <div class="badge-name">初出茅廬</div>
+                                <div class="badge-desc">完成註冊</div>
+                            </div>
+                            <div class="badge-item">
+                                <div class="badge-icon">🛡️</div>
+                                <div class="badge-name">法巴守護者</div>
+                                <div class="badge-desc">持有任一保單</div>
+                            </div>
+                            <div class="badge-item">
+                                <div class="badge-icon">📈</div>
+                                <div class="badge-name">穩健舵手</div>
+                                <div class="badge-desc">投資報酬 > 5%</div>
+                            </div>
+                            <div class="badge-item">
+                                <div class="badge-icon">🎓</div>
+                                <div class="badge-name">財商學徒</div>
+                                <div class="badge-desc">閱讀 10 篇文章</div>
+                            </div>
+                            <div class="badge-item">
+                                <div class="badge-icon">💎</div>
+                                <div class="badge-name">第一桶金</div>
+                                <div class="badge-desc">資產達 10 萬</div>
+                            </div>
+                            <div class="badge-item">
+                                <div class="badge-icon">🤝</div>
+                                <div class="badge-name">信賴夥伴</div>
+                                <div class="badge-desc">連續使用 30 天</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="vip-zone">
+                    <div class="vip-header">
+                        <div class="vip-title">🏆 VIP 尊爵專區</div>
+                        <div class="vip-condition">⚠️ 解鎖條件：持有 Cardif 保單</div>
+                    </div>
+                    <div class="vip-grid">
+                        <div class="vip-item">
+                            <div class="vip-lock-overlay"><div class="lock-icon">🔒</div><div class="lock-text">VIP Only</div></div>
+                            <div style="font-size: 24px;">🥩</div><div style="font-size: 12px; font-weight: bold;">西堤牛排</div><div style="font-size: 10px; opacity: 0.8;">7000 幣</div>
+                        </div>
+                        <div class="vip-item">
+                            <div class="vip-lock-overlay"><div class="lock-icon">🔒</div><div class="lock-text">VIP Only</div></div>
+                            <div style="font-size: 24px;">📺</div><div style="font-size: 12px; font-weight: bold;">Netflix</div><div style="font-size: 10px; opacity: 0.8;">2700 幣</div>
+                        </div>
+                        <div class="vip-item">
+                            <div class="vip-lock-overlay"><div class="lock-icon">🔒</div><div class="lock-text">VIP Only</div></div>
+                            <div style="font-size: 24px;">🎵</div><div style="font-size: 12px; font-weight: bold;">Spotify</div><div style="font-size: 10px; opacity: 0.8;">2500 幣</div>
+                        </div>
+                        <div class="vip-item">
+                            <div class="vip-lock-overlay"><div class="lock-icon">🔒</div><div class="lock-text">VIP Only</div></div>
+                            <div style="font-size: 24px;">🍕</div><div style="font-size: 12px; font-weight: bold;">必勝客</div><div style="font-size: 10px; opacity: 0.8;">1000 幣</div>
+                        </div>
+                        <div class="vip-item">
+                            <div class="vip-lock-overlay"><div class="lock-icon">🔒</div><div class="lock-text">VIP Only</div></div>
+                            <div style="font-size: 24px;">🍽️</div><div style="font-size: 12px; font-weight: bold;">王品 $500</div><div style="font-size: 10px; opacity: 0.8;">5000 幣</div>
+                        </div>
+                        <div class="vip-item">
+                            <div class="vip-lock-overlay"><div class="lock-icon">🔒</div><div class="lock-text">VIP Only</div></div>
+                            <div style="font-size: 24px;">🍗</div><div style="font-size: 12px; font-weight: bold;">KFC 蛋塔</div><div style="font-size: 10px; opacity: 0.8;">2000 幣</div>
+                        </div>
+                        <div class="vip-item">
+                            <div class="vip-lock-overlay"><div class="lock-icon">🔒</div><div class="lock-text">VIP Only</div></div>
+                            <div style="font-size: 24px;">📚</div><div style="font-size: 12px; font-weight: bold;">誠品 $250</div><div style="font-size: 10px; opacity: 0.8;">2500 幣</div>
+                        </div>
+                        <div class="vip-item">
+                            <div class="vip-lock-overlay"><div class="lock-icon">🔒</div><div class="lock-text">VIP Only</div></div>
+                            <div style="font-size: 24px;">🎁</div><div style="font-size: 12px; font-weight: bold;">新東陽</div><div style="font-size: 10px; opacity: 0.8;">3500 幣</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="general-zone">
+                    <div class="general-title">✨ 一般專區 (立即兌換)</div>
+                    <div class="general-grid">
+                        <div class="general-item">
+                            <div style="font-size: 28px;">🥚</div><div style="font-size: 13px; font-weight: bold; margin-top:5px;">茶葉蛋</div><div style="font-size: 11px; color:#666;">130 幣</div>
+                            <button class="general-btn">立即兌換</button>
+                        </div>
+                        <div class="general-item">
+                            <div style="font-size: 28px;">🍟</div><div style="font-size: 13px; font-weight: bold; margin-top:5px;">小薯</div><div style="font-size: 11px; color:#666;">350 幣</div>
+                            <button class="general-btn">立即兌換</button>
+                        </div>
+                        <div class="general-item">
+                            <div style="font-size: 28px;">🏪</div><div style="font-size: 13px; font-weight: bold; margin-top:5px;">7-11 $50</div><div style="font-size: 11px; color:#666;">500 幣</div>
+                            <button class="general-btn">立即兌換</button>
+                        </div>
+                        <div class="general-item">
+                            <div style="font-size: 28px;">🍩</div><div style="font-size: 13px; font-weight: bold; margin-top:5px;">Mister Donut</div><div style="font-size: 11px; color:#666;">500 幣</div>
+                            <button class="general-btn">立即兌換</button>
+                        </div>
+                        <div class="general-item">
+                            <div style="font-size: 28px;">🍣</div><div style="font-size: 13px; font-weight: bold; margin-top:5px;">爭鮮 $90</div><div style="font-size: 11px; color:#666;">900 幣</div>
+                            <button class="general-btn">立即兌換</button>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn-view-more" onclick="alert('更多精選好禮準備中，敬請期待！')">查看更多獎勵 v</button>
+            </div>
+
+            <div id="page-game-map" class="page sub-page" style="background: linear-gradient(180deg, #87CEEB 0%, #ffffff 100%);">
+                <div class="back-button" data-target="page-rewards">&lsaquo;</div>
+                <div class="sub-page-title">我的成長地圖</div>
+                
+                <div class="game-map-container">
+                    <div class="map-node completed">
+                        <div class="map-label">Lv.0</div>
+                        👶
+                    </div>
+                    <div class="map-node active" style="transform: translateX(-20px);">
+                        <div class="map-label">Lv.1 新手村</div>
+                        🏡
+                    </div>
+                    <div class="map-node locked" style="transform: translateX(20px);">
+                        <div class="map-label">Lv.2 儲蓄之森</div>
+                        🌲
+                    </div>
+                    <div class="map-node locked" style="transform: translateX(-10px);">
+                        <div class="map-label">Lv.3 投資峽谷</div>
+                        ⛰️
+                    </div>
+                    <div class="map-node locked" style="width: 90px; height: 90px; border: 4px solid #95a5a6;">
+                        <div class="map-label">Lv.10 財富城堡</div>
+                        🏰
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-settings" class="page">
+                <div class="page-title">設定</div>
+
+                <div class="card">
+                    <div class="section-title">👤 個人資料</div>
+                    <div class="settings-list">
+                        <div class="list-item">
+                            <span>姓名</span>
+                            <span style="color:#7f8c8d;">王大明</span>
+                        </div>
+                         <div class="list-item" onclick="openRiskSettings()">
+                            <span>投資偏好</span>
+                            <span class="list-action" id="settings-risk-label">穩健型 ></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="section-title">帳戶綁定</div>
+                    <div class="settings-list">
+                        <div class="list-item">
+                            <span>☁️ 財政部電子發票 (已綁定)</span>
+                            <button class="btn-small">設定</button>
+                        </div>
+                        <div class="list-item">
+                            <span>🏦 銀行交割帳戶 (未設定)</span>
+                            <button class="btn-small" style="color:var(--primary-color); border-color:var(--primary-color);">設定</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="section-title">支援與關於</div>
+                    <div class="settings-list">
+                        <div class="list-item" data-target="page-chatbot">
+                            <span>🤖 AI 助理設定 (小 C)</span>
+                            <span class="list-action">></span>
+                        </div>
+                        <div class="list-item">
+                            <span>👩‍💼 轉接真人客服</span>
+                            <span class="list-action">></span>
+                        </div>
+                        <div class="list-item">
+                            <span>🔒 隱私權條款</span>
+                            <span class="list-action">></span>
+                        </div>
+                         <div class="list-item" style="justify-content: center; border: none; margin-top: 10px;">
+                            <span style="color: red; font-weight: bold;">登出</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-news" class="page sub-page">
+                 <div class="back-button" data-target="page-rewards">&lsaquo;</div>
+                 <div class="sub-page-title">財經快訊</div>
+                 <div style="padding: 0 10px;">
+                     <h2 style="font-size: 22px; margin-bottom: 10px;">通膨是什麼？為什麼錢會變薄？</h2>
+                     <div style="color: #999; font-size: 12px; margin-bottom: 20px;">2025-10-29 | Cardif 編輯部</div>
+                     <div style="width: 100%; height: 150px; background: #ddd; margin-bottom: 20px; border-radius: 8px; display:flex; align-items:center; justify-content:center; color:#777;">文章配圖區</div>
+                     <p style="line-height: 1.6; color: #333;">
+                         通貨膨脹（Inflation）是指物價水準在一段時間內持續上漲，導致貨幣購買力下降的經濟現象。
+                         <br><br>
+                         簡單來說，今天的 100 元，明年可能只能買到 95 元價值的東西。對抗通膨最好的方式，就是透過適當的投資理財，讓資產增值的速度超過通膨率。
+                     </p>
+                     <button class="btn-primary" style="margin-top: 30px;" onclick="showQuizResult()">📝 開始小測驗 (3題)</button>
+                 </div>
+            </div>
+
+            <div id="page-pass" class="page sub-page">
+                <div class="back-button" data-target="page-home">&lsaquo;</div>
+                <div class="sub-page-title">Cardif Pass 數位通關</div>
+                
+                <div class="pass-card">
+                    <div style="background: #e8f8f5; color: var(--primary-color); padding: 4px 12px; border-radius: 12px; font-size: 12px; display:inline-block; margin-bottom:10px;">資料已加密打包</div>
+                    <h3 style="margin: 10px 0;">王大明 (準客戶)</h3>
+                    <div style="font-size: 13px; color: #7f8c8d;">KYC: 穩健型 | 預選: 穩健成長號</div>
+                    
+                    <div id="qrcode"></div>
+                    <div class="pass-serial">SN: CDF-2025-8899</div>
+                    
+                    <p style="font-size: 12px; color: #7f8c8d; line-height: 1.5; margin-top: 20px;">
+                        請至法巴合作銀行臨櫃出示此碼。<br>
+                        理專掃描後將自動帶入您的資料，<br>
+                        <strong>免填單，快速成交！</strong>
+                    </p>
+                </div>
+            </div>
+
+            <div id="page-chatbot" class="page sub-page" style="display: flex; flex-direction: column; background: #f0f2f5; padding: 0;">
+                 <div style="background: white; padding: 45px 20px 10px 20px; border-bottom: 1px solid #ddd; display: flex; align-items: center;">
+                     <div class="back-button" data-target="page-home" style="position: static; margin-right: 15px;">&lsaquo;</div>
+                     <div style="font-weight: bold; font-size: 16px;">Cardif 智能助理 小C</div>
+                 </div>
+                 
                  <div class="chat-container">
-                    <div class="chat-bubble bot" style="background-color: #e0f0ff; text-align: left; color: #333; border-bottom-left-radius: 20px;">
-                        <strong style="color: var(--primary-dark);">--- 來自 AI 助理小P 的交接摘要 ---</strong><br>
-                        <b>客戶:</b> 王先生<br>
-                        <b>問題:</b> 理賠遭拒 (高爭議/高情緒)<br>
-                        <b>摘要:</b> 客戶對於近期的理賠結果感到沮喪，需要專人協助處理。<br>
-                        <span style="font-size: 13px; color: #555;">(AI已匹配：理賠部 專家089)</span>
-                    </div>
-                    <div class="chat-bubble bot">
-                        王先生您好，我是理賠專家 089 號。
-                    </div>
-                    <div class="chat-bubble bot">
-                        我已經收到 AI 助理轉交的摘要，了解您對理賠結果有疑問。我看到您是上週三提出的申請，請您稍等，我正在立即為您調閱案件資料...
-                    </div>
-                    <div class="chat-bubble user">
-                        太好了，感謝。我不用再重講一次。
-                    </div>
-                    <div class="chat-bubble bot">正在查詢...</div>
-                    <div class="chat-bubble bot">根據系統記錄...</div>
-                    <div class="chat-bubble user">好的。</div>
-                    <div class="chat-bubble bot">原因是...</div>
-                    <div class="chat-bubble user">原來如此。</div>
-                    <div class="chat-bubble bot">您可以補充...</div>
-                    <div class="chat-bubble user">我該怎麼做？</div>
-                    <div class="chat-bubble bot">建議您...</div>
-                </div>
-                <div class="chat-input-bar"><input type="text" class="chat-input" placeholder="輸入訊息..."><button class="chat-send-btn">➤</button></div>
+                     <div class="chat-bubble bot">
+                         <div style="font-weight: bold; margin-bottom: 5px;">🤖 小 C</div>
+                         您好 ~ 我是 Cardif 智能助理 小C！<br>
+                         想查詢『帳戶餘額』還是『投資進度』呢？
+                     </div>
+                     <div class="chat-bubble user">
+                        我想了解我的投資型保單績效
+                     </div>
+                     <div class="chat-bubble bot">
+                         <div style="font-weight: bold; margin-bottom: 5px;">🤖 小 C</div>
+                         您的投資型保單績效為.... (+5.2%)
+                     </div>
+                     <div class="chat-bubble user">
+                        最近手頭有點緊... 我是不是該把投資停掉？😔
+                     </div>
+                     <div class="chat-system-msg">⚠️ 小C正在分析中...請稍候</div>
+                     <div class="chat-bubble bot">
+                         <div style="font-weight: bold; margin-bottom: 5px;">🤖 小 C</div>
+                         若現在解約，您將<strong>損失累積的複利效益</strong>，且壽險保障將立即終止。
+                     </div>
+                     <div class="chat-system-msg">⚠️ 偵測到用戶有『解約』或『調整配置』意圖，正在轉接專人服務...</div>
+                     <div class="chat-options">
+                         <button class="chat-option-btn" style="background: orange;">立即轉接<br>真人語音客服</button>
+                         <button class="chat-option-btn" style="background: orange;">立即轉接<br>真人文字客服</button>
+                     </div>
+                     <div class="chat-system-msg">正在為您轉接文字真人客服...</div>
+                     <div class="chat-bubble agent">
+                         <div style="font-weight: bold; margin-bottom: 5px;">👩‍💼 理財顧問 Lisa</div>
+                         王先生您好，我是理財顧問 Lisa。看到您想調整配置，根據您的風險屬性，我建議...
+                     </div>
+                 </div>
+
+                 <div class="chat-input-bar" style="height: 60px; background: #fff; display: flex; align-items: center; padding: 0 15px; border-top: 1px solid #eee;">
+                     <input type="text" placeholder="輸入訊息..." style="flex: 1; border: none; outline: none; font-size: 14px;">
+                     <button style="background: none; border: none; font-size: 20px; color: var(--primary-color);">➤</button>
+                 </div>
             </div>
-            
-            <div id="page-travel-recommendation" class="page sub-page white-bg">
-                <div class="back-button" data-target="page-home">&lsaquo; 返回首頁</div>
-                <div class="page-title sub-page-title">✈️ 海外突發傷病 保障建議</div>
 
-                <div class="card">
-                    <div class="section-title">AI 分析與建議</div>
-                    <p style="font-size: 14px; line-height: 1.6;">
-                        王先生您好，
-                    </p>
-                    <p style="font-size: 14px; line-height: 1.6;">
-                        偵測到您下週將前往日本，根據您的年齡、健康狀況以及日本當地的醫療費用水平，AI 評估您目前的「海外突發傷病」保障額度可能不足。
-                    </p>
-                     <p style="font-size: 14px; line-height: 1.6;">
-                        <strong>建議保障額度：</strong> 至少 100 萬新台幣 (含醫療專機)。
-                    </p>
-                     <p style="font-size: 14px; line-height: 1.6;">
-                        <strong>風險提醒：</strong> 日本醫療費用較高，若不幸發生意外或突發疾病，未有足夠保障可能導致龐大的醫療開銷。
-                    </p>
+            <div id="quiz-modal" class="modal-overlay">
+                <div class="modal-card">
+                    <div style="font-size: 50px; margin-bottom: 10px;">🎉</div>
+                    <h3 style="margin-bottom: 10px; color: var(--primary-color);">任務完成！</h3>
+                    <p>恭喜您通過測驗<br>已獲得 <strong>50 Cardif 幣</strong></p>
+                    <button class="btn-primary" onclick="closeQuizModal()">太棒了 (返回)</button>
                 </div>
+            </div>
 
-                <div class="card">
-                    <div class="section-title">推薦方案</div>
-                     <div class="clickable-list-item plan-item" data-target="page-coverage-detail" data-title="海外突發傷病" data-product-name="環球旅平卡 (海外醫療)" data-product-icon="✈️">
-                        <div class="title">
-                            <span>✈️</span> 
-                            <span>巴黎人壽「環球旅平卡 (海外醫療)」</span>
+            <div id="risk-setting-modal" class="modal-overlay">
+                <div class="modal-card" style="text-align: left;">
+                    <h3 style="margin-bottom: 15px; text-align: center;">選擇投資屬性</h3>
+                    <div class="risk-selection-list">
+                        <div class="risk-select-item" onclick="setRiskAndClose('conservative')">
+                            <span>🐢</span> 保守型
                         </div>
-                        <div class="arrow">&rsaquo;</div>
-                    </div>
-                     <p style="font-size: 13px; color: var(--text-light); margin-top: 10px;">
-                        點擊上方方案可查看詳細保障內容與保費試算。
-                    </p>
-                </div>
-                 <div class="card policy-gap-card" style="cursor: default;">
-                    <div class="icon">💡</div>
-                    <div class="text">
-                        <strong>小提示：</strong> 您也可以透過 AI 助理小P 或真人客服，進一步諮詢適合您的旅遊平安險方案。
-                        <br>
-                        <a href="#" data-target="page-chatbot">聯繫 AI 助理 &raquo;</a>
-                    </div>
-                </div>
-            </div>
-
-             <div id="page-health-report" class="page sub-page white-bg">
-                <div class="back-button" data-target="page-home">&lsaquo; 返回首頁</div>
-                <div class="page-title sub-page-title">詳細健康報告</div>
-                
-                <div class="card report-summary-card">
-                    <div class="score">82</div>
-                    <div class="score-label">您的健康總分</div>
-                    <p class="description">
-                        AI 分析：您的步數和有氧運動表現良好，但「睡眠品質」是近期需要注意的主要風險因子。
-                    </p>
-                </div>
-                <div class="card">
-                    <div class="section-title">睡眠分析 (近 7 天)</div>
-                    <div class="chart-container">
-                        <canvas id="sleepChart"></canvas>
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="section-title">步數分析 (近 30 天)</div>
-                    <div class="chart-container">
-                        <canvas id="stepsChart"></canvas>
-                    </div>
-                </div>
-            </div>
-            
-            <div id="page-coverage-detail" class="page sub-page white-bg">
-                <div class="back-button" data-target="page-home">&lsaquo; 返回首頁</div>
-                <div id="coverage-detail-title" class="page-title sub-page-title">保障缺口分析</div>
-                
-                <div class="card policy-gap-card">
-                    <div class="icon">💡</div>
-                    <div class="text">
-                        <strong id="coverage-gap-text">AI 發現「重大疾病」保障嚴重不足：</strong>
-                        根據您的年齡 (42) 與家庭責任，AI 建議您至少需要 200 萬的保障額度。
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="section-title">目前保障額度</div>
-                    <div class="doughnut-chart-container">
-                        <canvas id="coverageChart"></canvas>
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="section-title">AI 建議方案</div>
-                    <div class="clickable-list-item plan-item">
-                        <div class="title">
-                            <span id="reco-product-icon">🛡️</span> 
-                            <span id="reco-product-name">巴黎人壽「醫靠鍾身」方案</span>
+                        <div class="risk-select-item" onclick="setRiskAndClose('steady')">
+                            <span>⚖️</span> 穩健型
                         </div>
-                        <div class="arrow">&rsaquo;</div>
+                        <div class="risk-select-item" onclick="setRiskAndClose('aggressive')">
+                            <span>🚀</span> 積極型
+                        </div>
                     </div>
+                    <button class="btn-primary" onclick="closeRiskSettings()" style="background: #ccc; margin-top: 10px;">取消</button>
                 </div>
             </div>
 
-            <div id="page-rewards-store" class="page sub-page">
-                <div class="back-button" data-target="page-tasks">&lsaquo; 返回任務</div>
-                <div class="page-title sub-page-title">🎁 獎品商城</div>
-                <div class="rewards-grid">
-                    <div class="reward-card"><div class="icon">☕</div><div class="title">7-11 咖啡券</div><div class="cost">500 積分</div></div>
-                    <div class="reward-card"><div class="icon">💰</div><div class="title">$50 保費折抵</div><div class="cost">1000 積分</div></div>
-                    <div class="reward-card"><div class="icon">🏋️</div><div class="title">健身房體驗券</div><div class="cost">1500 積分</div></div>
-                    <div class="reward-card"><div class="icon">🍎</div><div class="title">健康餐盒</div><div class="cost">1200 積分</div></div>
+            <div class="nav-bar">
+                <div class="nav-item active" data-page="page-home">
+                    <span>🏠</span><div>首頁</div>
                 </div>
-            </div>
-
-            <div id="page-task-event-detail" class="page sub-page white-bg">
-                <div class="back-button" data-target="page-tasks">&lsaquo; 返回任務</div>
-                <div class="page-title sub-page-title">十月健走挑戰賽</div>
-                <div class="card"><p>與全體會員一起挑戰本月累積 10 萬步！達成目標即可獲得 500 積分，並有機會抽中 Apple Watch。</p></div>
-            </div>
-
-            <div id="page-policy-list" class="page sub-page white-bg">
-                <div class="back-button" data-target="page-policies">&lsaquo; 返回保單</div>
-                <div id="policy-list-title" class="page-title sub-page-title">保單列表</div>
-                <div class="settings-group" id="policy-list-container"></div>
-            </div>
-            
-            <div id="page-financial-education" class="page sub-page white-bg"><div class="back-button" data-target="page-home">&lsaquo; 返回首頁</div><div class="page-title sub-page-title">🎓 子女教育金試算</div><div class="card"><p>AI 正在根據您目前的收入與支出，為您試算子女教育金缺口...</p></div></div>
-            <div id="page-financial-retirement" class="page sub-page white-bg"><div class="back-button" data-target="page-home">&lsaquo; 返回首頁</div><div class="page-title sub-page-title">🏖️ 退休金規劃</div><div class="card"><p>AI 正在為您規劃退休金...</p></div></div>
-            <div id="page-financial-investment" class="page sub-page white-bg"><div class="back-button" data-target="page-home">&lsaquo; 返回首頁</div><div class="page-title sub-page-title">📈 投資組合建議</div><div class="card"><p>AI 正在分析您的風險屬性，並提供投資建議...</p></div></div>
-
-            <div id="page-settings-profile" class="page sub-page white-bg">
-                <div class="back-button" data-target="page-settings">&lsaquo; 返回設定</div><div class="page-title sub-page-title">👤 個人資料</div>
-                <div class="card">
-                    <div class="form-group"><label>姓名</label><input type="text" value="王先生"></div>
-                    <div class="form-group"><label>Email</label><input type="email" value="demo@email.com"></div>
-                    <button class="form-button">儲存變更</button>
+                <div class="nav-item" data-page="page-analysis">
+                    <span>📊</span><div>分析</div>
                 </div>
-                <div class="section-title" style="margin-top: 30px;">財務資料</div>
-                <div class="settings-group">
-                    <div class="clickable-list-item settings-item" data-target="page-mock-bank-detail">
-                        <div class="title"><span>🏦</span> 阿里山銀行 (Ali.SUN)</div>
-                        <div class="value">•••• 1234</div>
-                    </div>
-                    <div class="clickable-list-item settings-item" data-target="page-mock-bank-detail-cc">
-                        <div class="title"><span>💳</span> 信用卡 (VISA)</div>
-                        <div class="value">•••• 5678</div>
-                    </div>
-                    <div class="clickable-list-item settings-item" data-target="page-mock-bank-add" style="color: var(--primary-color); font-weight: 500;">
-                        <div class="title"><span>+</span> 新增銀行帳戶</div>
-                        <div class="arrow">&rsaquo;</div>
-                    </div>
+                <div class="nav-item" data-page="page-invest">
+                    <span>📈</span><div>投資</div>
                 </div>
-            </div>
-            <div id="page-settings-family" class="page sub-page white-bg"><div class="back-button" data-target="page-settings">&lsaquo; 返回設定</div><div class="page-title sub-page-title">👨‍👩‍👧‍👦 家庭成員管理</div><div class="card"><p>您可以在此新增家庭成員 (配偶、子女)，讓 AI 為您進行更完整的家庭保障分析。</p><button class="form-button" style="margin-top: 20px;">+ 新增成員</button></div></div>
-            <div id="page-settings-security" class="page sub-page white-bg"><div class="back-button" data-target="page-settings">&lsaquo; 返回設定</div><div class="page-title sub-page-title">🔒 密碼與安全性</div><div class="card"><div class="clickable-list-item settings-item"><div class="title">變更密碼</div><div class="arrow">&rsaquo;</div></div><div class="clickable-list-item settings-item"><div class="title">雙重驗證 (2FA)</div><div class="value">已啟用</div></div></div></div>
-            <div id="page-settings-data" class="page sub-page white-bg"><div class="back-button" data-target="page-settings">&lsaquo; 返回設定</div><div class="page-title sub-page-title">🏥 健保資料</div><div class="card"><p>您的健保資料 (健康存摺) 已於 2025/10/01 成功連結。AI 將定期同步您的就醫紀錄，以提供更精準的健康分析。</p></div></div>
-            <div id="page-settings-upload" class="page sub-page white-bg"><div class="back-button" data-target="page-settings">&lsaquo; 返回設定</div><div class="page-title sub-page-title">📤 保單上傳</div><div class="card"><p>請上傳您在其他保險公司的保單 (PDF 或 JPG)，AI 保單管家將自動為您彙整。</p><button class="form-button" style="margin-top: 20px;">點此上傳檔案</button></div></div>
-            <div id="page-settings-faq" class="page sub-page white-bg">
-                <div class="back-button" data-target="page-settings">&lsaquo; 返回設定</div><div class="page-title sub-page-title">❓ 常見問題 (FAQ)</div>
-                <div class="faq-item active"><div class="faq-item-header">AI 如何保護我的隱私？</div><div class="faq-item-body">您的所有資料均經過加密儲存...</div></div>
-                <div class="faq-item"><div class="faq-item-header">健康積分如何計算？</div><div class="faq-item-body">健康積分是...</div></div>
-            </div>
-
-            <div id="page-settings-notifications" class="page sub-page white-bg">
-                <div class="back-button" data-target="page-settings">&lsaquo; 返回設定</div>
-                <div class="page-title sub-page-title">🔔 通知設定</div>
-                <div class="settings-group"><div class="settings-switch-item">
-                    <div class="title">AI 主動提醒</div><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></div>
-                    <div class="settings-switch-item">
-                        <div class="title">健康任務通知</div>
-                        <label class="switch">
-                            <input type="checkbox" checked>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
+                <div class="nav-item" data-page="page-rewards">
+                    <span>🎁</span><div>任務</div>
+                </div>
+                <div class="nav-item" data-page="page-settings">
+                    <span>⚙️</span><div>設定</div>
                 </div>
             </div>
             
-            <div id="page-settings-privacy" class="page sub-page white-bg">
-                <div class="back-button" data-target="page-settings">&lsaquo; 返回設定</div>
-                <div class="page-title sub-page-title">🛡️ 隱私權與資料分享</div>
-                
-                <div class="section-title" style="padding-top: 10px;">健康數據分享</div>
-                <div class="settings-group">
-                    <div class="settings-switch-item">
-                        <div class="title"><span>❤️</span> Apple 健康 (步數、睡眠)</div>
-                        <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
-                    </div>
-                    <div class="settings-switch-item" style="display: block; border-bottom: none;"> <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div class="title"><span>⌚</span> Garmin Connect (心率)</div>
-                            <label class="switch"><input type="checkbox"><span class="slider"></span></label>
-                         </div><br>
-                         <div class="description">分享健康數據以獲得健康積分與保費折抵 </div>
-                    </div>
-                </div>
-                
-                <div class="section-title">財務數據分享</div>
-                <div class="settings-group">
-                    <div class="settings-switch-item" style="display: block; border-bottom: none;"> <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div class="title"><span>🏦</span> 銀行帳戶連結 (收入支出)</div>
-                            <label class="switch"><input type="checkbox"><span class="slider"></span></label>
-                         </div><br>
-                         <div class="description">分享財務數據以獲得 AI 退休金與資產配置建議</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div id="page-mock-bank-detail" class="page sub-page white-bg">
-                <div class="back-button" data-target="page-settings-profile">&lsaquo; 返回個人資料</div>
-                <div class="page-title sub-page-title">🏦 阿里山銀行 (•••• 1234)</div>
-                <div class="card"><p>您已連結此帳戶作為主要的保費扣款與理賠入帳戶。AI 將會（在您授權後）分析此帳戶的現金流，以提供財務建議。</p></div>
-                <div class="settings-group">
-                     <div class="clickable-list-item settings-item" style="color: #dc3545; justify-content: center;">
-                        <div class="title"><span>⛔</span> 解除連結</div>
-                    </div>
-                </div>
-            </div>
+            <div style="position: absolute; bottom: 85px; right: 20px; width: 50px; height: 50px; background: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; z-index: 50;" data-target="page-chatbot">🤖</div>
 
-            <div id="page-mock-bank-detail-cc" class="page sub-page white-bg">
-                <div class="back-button" data-target="page-settings-profile">&lsaquo; 返回個人資料</div>
-                <div class="page-title sub-page-title">💳 信用卡 (•••• 5678)</div>
-                <div class="card"><p>您已連結此信用卡作為保費扣款方式之一。</p></div>
-            </div>
-
-            <div id="page-mock-bank-add" class="page sub-page white-bg">
-                <div class="back-button" data-target="page-settings-profile">&lsaquo; 返回個人資料</div>
-                <div class="page-title sub-page-title">新增銀行帳戶</div>
-                <div class="card"><p>（此處為模擬新增銀行帳戶或信用卡連結的流程...）</p></div>
-            </div>
-
-            <div id="page-logout" class="page fullscreen-page">
-                <div class="logout-screen">
-                    <div class="icon">👋</div>
-                    <h2>您已登出</h2>
-                    <p>感謝您使用 AI 終身規劃師</p>
-                    <a class="login-again-btn" data-target="page-home">重新登入</a>
-                </div>
-            </div>
-        
-            <div class="fab" data-target="page-chatbot">
-                🤖
-            </div>
-        </div> 
-
-        <div class="nav-bar">
-            <div class="nav-item active" data-page="page-home">
-                <span>🏠</span>
-                <div>首頁</div>
-            </div>
-            <div class="nav-item" data-page="page-tasks">
-                <span>🎯</span>
-                <div>健康任務</div>
-            </div>
-            <div class="nav-item" data-page="page-policies">
-                <span>📄</span>
-                <div>我的保單</div>
-            </div>
-            <div class="nav-item" data-page="page-settings">
-                <span>⚙️</span>
-                <div>設定</div>
-            </div>
         </div>
+    </div>
 
-    </div> 
-    
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        
-        // --- 全局變數 ---
-        const navItems = document.querySelectorAll('.nav-item');
-        const pages = document.querySelectorAll('.page');
-        const screen = document.querySelector('.screen');
-        
-        let chartInstances = {}; // 用一個物件來管理所有圖表
+        // 全局變數儲存當前風險
+        let currentGlobalRisk = 'steady';
 
-        // --- 1. 核心導航功能 ---
-        function showPage(pageId, pageData = {}) {
-            // [★ 修正] 確保 pageId 存在
-            if (!pageId) {
-                console.error("showPage called with invalid pageId:", pageId);
-                pageId = 'page-home'; // 備援：回到首頁
-            }
+        document.addEventListener('DOMContentLoaded', function() {
+            // --- 導航邏輯 ---
+            const pages = document.querySelectorAll('.page');
+            const navItems = document.querySelectorAll('.nav-item');
             
-            let targetPage = document.getElementById(pageId);
-            
-            if (!targetPage) {
-                console.warn(`Page element with ID "${pageId}" not found. Redirecting to home.`);
-                targetPage = document.getElementById('page-home');
-                pageId = 'page-home'; // 確保 pageId 更新
-            }
-            
-            // (A) 隱藏所有頁面
-            pages.forEach(page => {
-                 page.classList.remove('active');
-                 // [★ 修正] 確保 display 正確設置為 none
-                 page.style.display = 'none'; 
-            });
-            
-            // (B) 顯示目標頁面 - 根據頁面 ID 設置 display 屬性
-            if (pageId === 'page-chatbot' || pageId === 'page-support-chat') {
-                targetPage.style.display = 'flex'; // ★ 聊天頁面用 flex
-            } else {
-                targetPage.style.display = 'block';// ★ 其他頁面用 block
-            }
-            targetPage.classList.add('active'); // ★ 添加 active class
-            
-            
-            // (C) 處理滾動行為
-            if (pageId === 'page-chatbot' || pageId === 'page-support-chat') {
-                // 找到聊天容器
-                const chatContainer = targetPage.querySelector('.chat-container');
-                if (chatContainer) {
-                    // ★ 延遲滾動到底部，確保渲染完成
-                    setTimeout(() => {
-                        chatContainer.scrollTop = chatContainer.scrollHeight;
-                    }, 0); 
+            window.navigateTo = function(pageId) {
+                pages.forEach(p => {
+                    p.classList.remove('active');
+                    p.style.display = 'none'; 
+                });
+                
+                const target = document.getElementById(pageId);
+                if(target) {
+                    if (target.classList.contains('fullscreen-page') || pageId === 'page-chatbot') {
+                         target.style.display = 'flex';
+                    } else if (pageId === 'page-wallet-detail') {
+                         target.style.display = 'flex'; 
+                         startConfetti();
+                    } else {
+                        target.style.display = 'block';
+                    }
+                    void target.offsetWidth; 
+                    target.classList.add('active');
+                    
+                    if(pageId === 'page-pass') generateQRCode();
+                    if(pageId === 'page-analysis') drawExpenseChart();
+                    if(pageId === 'page-invest') {
+                        // 每次進投資頁都重新渲染當前的風險狀態
+                        updateInvestPageUI(currentGlobalRisk);
+                    }
                 }
-            } else {
-                // 其他頁面滾動到頂部
-                targetPage.scrollTop = 0; 
+
+                navItems.forEach(item => {
+                    if(item.getAttribute('data-page') === pageId) {
+                        item.classList.add('active');
+                    } else {
+                        item.classList.remove('active');
+                    }
+                });
+            };
+
+            document.body.addEventListener('click', function(e) {
+                const target = e.target.closest('[data-target]');
+                if(target) {
+                    const pageId = target.getAttribute('data-target');
+                    navigateTo(pageId);
+                }
+                const navItem = e.target.closest('.nav-item');
+                if(navItem) {
+                    const pageId = navItem.getAttribute('data-page');
+                    navigateTo(pageId);
+                }
+            });
+
+            // --- 任務 Tab 切換邏輯 ---
+            window.switchMissionTab = function(tabName, btnElement) {
+                // 1. 按鈕樣式切換
+                document.querySelectorAll('.mission-tab-btn').forEach(btn => btn.classList.remove('active'));
+                btnElement.classList.add('active');
+
+                // 2. 內容面板切換
+                document.querySelectorAll('.mission-panel').forEach(panel => panel.classList.remove('active'));
+                const targetPanel = document.getElementById('panel-' + tabName);
+                if(targetPanel) {
+                    targetPanel.classList.add('active');
+                }
             }
-            
-            // (D) 處理底部導航列的 active 狀態
-            if (!targetPage.classList.contains('sub-page') && !targetPage.classList.contains('fullscreen-page')) {
-                navItems.forEach(nav => {
-                    nav.classList.toggle('active', nav.getAttribute('data-page') === pageId);
+
+            // --- 設定頁彈窗邏輯 ---
+            window.openRiskSettings = function() {
+                document.getElementById('risk-setting-modal').style.display = 'flex';
+            }
+            window.closeRiskSettings = function() {
+                document.getElementById('risk-setting-modal').style.display = 'none';
+            }
+            window.setRiskAndClose = function(type) {
+                currentGlobalRisk = type;
+                const labelMap = { 'conservative': '保守型', 'steady': '穩健型', 'aggressive': '積極型' };
+                document.getElementById('settings-risk-label').innerText = labelMap[type] + ' >';
+                
+                closeRiskSettings();
+                alert('設定已更新！');
+            }
+
+
+            // --- 流程彈窗邏輯 ---
+            window.showProcessModal = function() {
+                const modal = document.getElementById('process-modal');
+                modal.style.display = 'flex';
+                setTimeout(() => document.getElementById('step-1').classList.add('active'), 500);
+                setTimeout(() => document.getElementById('step-2').classList.add('active'), 1500);
+                setTimeout(() => document.getElementById('step-3').classList.add('active'), 2500);
+                setTimeout(() => {
+                    document.getElementById('step-4').classList.add('active');
+                    document.getElementById('process-done-btn').style.display = 'block';
+                }, 3500);
+            }
+            window.closeProcessModal = function() {
+                document.getElementById('process-modal').style.display = 'none';
+                navigateTo('page-invest');
+            }
+
+            // --- 特效 ---
+            function startConfetti() {
+                const container = document.getElementById('confetti-container');
+                container.innerHTML = '';
+                const symbols = ['🪙', '✨', '💰', '🌟'];
+                for(let i=0; i<30; i++) {
+                    const el = document.createElement('div');
+                    el.classList.add('confetti');
+                    el.innerText = symbols[Math.floor(Math.random() * symbols.length)];
+                    el.style.left = Math.random() * 100 + '%';
+                    el.style.animationDuration = (2 + Math.random() * 3) + 's';
+                    el.style.animationDelay = Math.random() * 2 + 's';
+                    container.appendChild(el);
+                }
+            }
+
+            // --- 投資頁邏輯 ---
+            let fundChartInstance = null;
+            let allocationChartInstance = null;
+
+            window.updateInvestPageUI = function(type) {
+                const identityText = document.getElementById('identity-text');
+                const identityCard = document.getElementById('identity-card');
+                const identityIcon = document.getElementById('identity-icon');
+                
+                let lineData, allocData, allocLabels, allocColors, icon;
+                
+                if(type === 'conservative') {
+                    identityText.innerText = '保守型投資人 (Conservative)';
+                    identityCard.style.borderLeftColor = '#3498db'; 
+                    identityCard.style.background = 'linear-gradient(to right, #ffffff, #f0f8ff)';
+                    icon = '🐢';
+                    lineData = [100, 102, 103, 105, 106, 108]; 
+                    allocLabels = ['全球債券', '貨幣市場', '大型權值股'];
+                    allocData = [60, 30, 10];
+                    allocColors = ['#3498db', '#bdc3c7', '#2ecc71'];
+                } else if(type === 'steady') {
+                    identityText.innerText = '穩健型投資人 (Balanced)';
+                    identityCard.style.borderLeftColor = '#00915a';
+                    identityCard.style.background = 'linear-gradient(to right, #ffffff, #f0fff4)';
+                    icon = '⚖️';
+                    lineData = [100, 105, 110, 118, 125, 135];
+                    allocLabels = ['全球債券', '科技股', '新興市場'];
+                    allocData = [40, 30, 30];
+                    allocColors = ['#3498db', '#e67e22', '#9b59b6'];
+                } else if(type === 'aggressive') {
+                    identityText.innerText = '積極型投資人 (Aggressive)';
+                    identityCard.style.borderLeftColor = '#e74c3c';
+                    identityCard.style.background = 'linear-gradient(to right, #ffffff, #fff0f0)';
+                    icon = '🚀';
+                    lineData = [100, 110, 105, 130, 145, 160];
+                    allocLabels = ['科技股', '新興市場', '高收益債'];
+                    allocData = [50, 30, 20];
+                    allocColors = ['#e67e22', '#9b59b6', '#e74c3c'];
+                }
+                
+                if(identityIcon) identityIcon.innerText = icon;
+
+                const ctxLine = document.getElementById('fundChart');
+                if(fundChartInstance) fundChartInstance.destroy();
+                
+                fundChartInstance = new Chart(ctxLine, {
+                    type: 'line',
+                    data: {
+                        labels: ['2020', '2021', '2022', '2023', '2024', '2025'],
+                        datasets: [{
+                            label: '淨值走勢',
+                            data: lineData,
+                            borderColor: identityCard.style.borderLeftColor,
+                            backgroundColor: 'rgba(0,0,0,0)',
+                            borderWidth: 3,
+                            pointRadius: 0,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: { x: { display: false }, y: { display: false } }
+                    }
+                });
+
+                const ctxAlloc = document.getElementById('allocationChart');
+                if(allocationChartInstance) allocationChartInstance.destroy();
+                
+                allocationChartInstance = new Chart(ctxAlloc, {
+                    type: 'doughnut',
+                    data: {
+                        labels: allocLabels,
+                        datasets: [{
+                            data: allocData,
+                            backgroundColor: allocColors,
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '70%',
+                        plugins: { legend: { display: false } }
+                    }
+                });
+
+                const legendContainer = document.getElementById('allocation-legend');
+                let legendHTML = '';
+                allocLabels.forEach((label, index) => {
+                    legendHTML += `
+                        <div class="legend-item">
+                            <div style="display:flex; align-items:center;">
+                                <span class="legend-color" style="background:${allocColors[index]}"></span>
+                                ${label}
+                            </div>
+                            <strong>${allocData[index]}%</strong>
+                        </div>
+                    `;
+                });
+                legendContainer.innerHTML = legendHTML;
+            };
+
+            function generateQRCode() {
+                const qrContainer = document.getElementById("qrcode");
+                qrContainer.innerHTML = "";
+                new QRCode(qrContainer, {
+                    text: "CDF-NEXT-USER-8899-WANG-STEADY",
+                    width: 128,
+                    height: 128,
+                    colorDark : "#00915a",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+            }
+
+            let expenseChartInstance = null;
+            function drawExpenseChart() {
+                const ctx = document.getElementById('expenseChart').getContext('2d');
+                if(expenseChartInstance) expenseChartInstance.destroy();
+                
+                expenseChartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['飲食', '手搖/外送', '交通', '遊戲', '其他'],
+                        datasets: [{
+                            data: [35, 15, 10, 25, 15],
+                            backgroundColor: ['#bdc3c7', '#e74c3c', '#95a5a6', '#f39c12', '#bdc3c7']
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
                 });
             }
             
-            // (E) 繪製圖表或更新內容 (保持不變)
-            try {
-                if (pageId === 'page-health-report') {
-                    drawStaticCharts(); 
-                }
-                if (pageId === 'page-coverage-detail') {
-                    const title = pageData.title || '保障缺口分析';
-                    const productName = pageData.productName || 'AI 推薦方案';
-                    const productIcon = pageData.productIcon || '🛡️';
-                    
-                    const titleElement = document.getElementById('coverage-detail-title');
-                    const gapTextElement = document.getElementById('coverage-gap-text');
-                    const recoIconElement = document.getElementById('reco-product-icon');
-                    const recoNameElement = document.getElementById('reco-product-name');
-
-                    if (titleElement) titleElement.innerText = `保障缺口：${title}`;
-                    if (gapTextElement) gapTextElement.innerText = `AI 發現「${title}」保障不足...`;
-                    if (recoIconElement) recoIconElement.innerText = productIcon;
-                    if (recoNameElement) recoNameElement.innerText = `巴黎人壽「${productName}」`;
-                    
-                    drawCoverageChart(title); 
-                }
-                
-                if (pageId === 'page-policy-list') {
-                    const title = pageData.title || '保單列表';
-                    const policyTitleElement = document.getElementById('policy-list-title');
-                    if (policyTitleElement) policyTitleElement.innerText = title;
-                    drawPolicyList(title); 
-                }
-            } catch (error) {
-                console.error(`Error while preparing page ${pageId}:`, error);
+            window.showQuizResult = function() {
+                document.getElementById('quiz-modal').style.display = 'flex';
             }
-        }
-
-        // --- 2. 使用「事件委派」來處理所有點擊 --- (★ 確保對 back-button 也有效)
-        screen.addEventListener('click', function(e) {
-            
-            // 檢查是否點擊在具有 data-target 的元素上 (包括返回按鈕)
-            const targetElement = e.target.closest('[data-target]');
-            if (targetElement) {
-                e.preventDefault(); 
-                e.stopPropagation(); // 防止事件冒泡干擾
-                
-                const targetPageId = targetElement.getAttribute('data-target');
-                const pageData = {
-                    title: targetElement.getAttribute('data-title'),
-                    productName: targetElement.getAttribute('data-product-name'),
-                    productIcon: targetElement.getAttribute('data-product-icon')
-                };
-                
-                // ★ 調用 showPage 函數進行頁面切換
-                showPage(targetPageId, pageData); 
-                return; // 處理完畢，退出函數
+            window.closeQuizModal = function() {
+                document.getElementById('quiz-modal').style.display = 'none';
+                window.navigateTo('page-rewards');
             }
-            
-            // 檢查 FAQ (保持不變)
-            const faqHeader = e.target.closest('.faq-item-header');
-            if (faqHeader) {
-                faqHeader.parentElement.classList.toggle('active');
-                return; 
-            }
-            
-            // (可以在此處添加其他非導航的點擊處理)
         });
-        
-        // --- 3. 處理「底部導航列」點擊 (保持不變) ---
-        navItems.forEach(item => {
-            item.addEventListener('click', function() {
-                const targetPageId = this.getAttribute('data-page');
-                showPage(targetPageId);
-            });
-        });
-
-        // --- 4. 繪製圖表函數 (保持不變) --- 
-        function drawStaticCharts() {
-            try {
-                const sleepCanvas = document.getElementById('sleepChart');
-                if (sleepCanvas) {
-                    if (chartInstances['sleepChart']) chartInstances['sleepChart'].destroy();
-                    const sleepCtx = sleepCanvas.getContext('2d');
-                    chartInstances['sleepChart'] = new Chart(sleepCtx, { type: 'line', data: { labels: ['10/11', '10/12', '10/13', '10/14', '10/15', '10/16', '10/17'], datasets: [{ label: '睡眠時數', data: [7.5, 6.8, 7.2, 6.5, 8.0, 7.1, 6.5], borderColor: 'rgba(0, 122, 255, 1)', backgroundColor: 'rgba(0, 122, 255, 0.1)', fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false } });
-                } else { console.warn("Canvas 'sleepChart' not found."); }
-                const stepsCanvas = document.getElementById('stepsChart');
-                if (stepsCanvas) {
-                    if (chartInstances['stepsChart']) chartInstances['stepsChart'].destroy();
-                    const stepsCtx = stepsCanvas.getContext('2d');
-                    chartInstances['stepsChart'] = new Chart(stepsCtx, { type: 'bar', data: { labels: ['W1', 'W2', 'W3', 'W4'], datasets: [{ label: '平均每日步數', data: [7200, 8100, 6900, 8300], backgroundColor: 'rgba(52, 199, 89, 0.8)' }] }, options: { responsive: true, maintainAspectRatio: false } });
-                } else { console.warn("Canvas 'stepsChart' not found."); }
-            } catch (error) { console.error("Error drawing static charts:", error); }
-        }
-        function drawCoverageChart(category) {
-            try {
-                const coverageCanvas = document.getElementById('coverageChart');
-                if (!coverageCanvas) { console.warn("Canvas 'coverageChart' not found."); return; }
-                const ctx = coverageCanvas.getContext('2d');
-                let chartData;
-                switch(category) {
-                    case '基礎醫療': case '意外 / 傷殘': chartData = [100, 0]; break;
-                    case '家庭責任 (壽險)': chartData = [70, 30]; break;
-                    case '退休金流 (理財)': chartData = [20, 80]; break;
-                    case '重大疾病 / 癌症': case '長照 / 傳承': default: chartData = [5, 95]; break;
-                }
-                if (chartInstances['coverageChart']) { chartInstances['coverageChart'].destroy(); }
-                chartInstances['coverageChart'] = new Chart(ctx, { type: 'doughnut', data: { labels: ['目前保障', '保障缺口'], datasets: [{ data: chartData, backgroundColor: ['rgba(0, 122, 255, 1)', 'rgba(220, 53, 69, 1)'], borderColor: ['#fff', '#fff'], borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom' } } } });
-            } catch (error) { console.error("Error drawing coverage chart:", error); }
-        }
-        function drawPolicyList(category) {
-            const container = document.getElementById('policy-list-container');
-            if (!container) return;
-            let policiesHtml = '';
-            switch(category) {
-                case '基礎醫療': policiesHtml = `<div class="clickable-list-item settings-item"><div class="title"><span>📄</span> XX 實支實付醫療險</div><div class="arrow">&rsaquo;</div></div> <div class="clickable-list-item settings-item"><div class="title"><span>📄</span> OO 住院日額</div><div class="arrow">&rsaquo;</div></div>`; break;
-                case '意外 / 傷殘': policiesHtml = `<div class="clickable-list-item settings-item"><div class="title"><span>📄</span> XX 意外險</div><div class="arrow">&rsaquo;</div></div>`; break;
-                case '家庭責任 (壽險)': policiesHtml = `<div class="clickable-list-item settings-item"><div class="title"><span>📄</span> XX 20年期壽險</div><div class="arrow">&rsaquo;</div></div> <div class="clickable-list-item settings-item"><div class="title"><span>📄</span> OO 投資型保單 (壽險)</div><div class="arrow">&rsaquo;</div></div>`; break;
-                default: policiesHtml = `<div style="padding: 20px; text-align: center; color: #888;">您在此分類尚無保單</div>`; break;
-            }
-            container.innerHTML = policiesHtml;
-        }
-
-        // --- 5. 頁面初次載入時處理預設頁面 ---
-        const initialActivePage = document.querySelector('.page.active');
-        if (initialActivePage) {
-            // [★★★ 修正 ★★★]
-            // 根據初始頁面 ID 設置正確的 display 屬性並處理滾動
-            const initialPageId = initialActivePage.id;
-            if (initialPageId === 'page-chatbot' || initialPageId === 'page-support-chat') {
-                initialActivePage.style.display = 'flex'; // ★ 初始設置為 flex
-                 const chatContainer = initialActivePage.querySelector('.chat-container');
-                if (chatContainer) {
-                    // ★ 延遲滾動
-                    setTimeout(() => {
-                        chatContainer.scrollTop = chatContainer.scrollHeight;
-                    }, 0); 
-                }
-            } else {
-                 initialActivePage.style.display = 'block'; // ★ 其他頁面是 block
-            }
-        } else {
-             // 如果 HTML 中沒有預設 active 的頁面，預設顯示首頁
-             showPage('page-home');
-        }
-        
-    });
-</script>
-
+    </script>
 </body>
 </html>

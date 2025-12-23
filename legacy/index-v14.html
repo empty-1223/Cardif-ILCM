@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cardif NEXT - Z世代夢想加速器 (v14)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        /* * ===============================================
+         * Cardif NEXT 風格設定 (Z世代 / 科技金融感)
+         * ===============================================
+         */
+        :root {
+            --primary-color: #00915a; /* 法巴綠/金融綠 */
+            --primary-dark: #005c3a;
+            --accent-color: #ff5e00;  /* 活力橘 (強調行動) */
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+            --text-main: #2c3e50;
+            --text-sub: #7f8c8d;
+            --tier-locked: #bdc3c7;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #2c3e50; /* 背景改深色以凸顯手機 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding-top: 20px;
+            padding-bottom: 20px;
+            height: 100vh;
+            box-sizing: border-box;
+            margin: 0;
+        }
+
+        .phone-mockup {
+            width: 375px;
+            height: 812px;
+            background: var(--bg-color);
+            border: 14px solid #1a1a1a;
+            border-radius: 40px;
+            box-shadow: 0 19px 38px rgba(0,0,0,0.30), 0 15px 12px rgba(0,0,0,0.22);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .phone-mockup::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 50%;
+            transform: translateX(-50%);
+            width: 180px; height: 25px;
+            background: #1a1a1a;
+            border-bottom-left-radius: 18px;
+            border-bottom-right-radius: 18px;
+            z-index: 100;
+        }
+
+        /* * ===============================================
+         * 頁面佈局
+         * ===============================================
+         */
+        .screen {
+            width: 100%; height: 100%;
+            position: absolute; top: 0; left: 0;
+            background: var(--bg-color);
+            overflow: hidden;
+        }
+        
+        .page {
+            width: 100%; height: 100%;
+            padding: 50px 20px 80px 20px; /* 避開瀏海與導航列 */
+            box-sizing: border-box;
+            overflow-y: auto;
+            display: none;
+            position: absolute;
+            background-color: var(--bg-color);
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .page.active { display: block; }
+        
+        .page.sub-page {
+            padding: 50px 20px 20px 20px;
+            z-index: 30;
+            background-color: #ffffff;
+        }
+
+        .page.fullscreen-page {
+            z-index: 50;
+            padding: 0;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+        }
+        .page.fullscreen-page.active { display: flex; }
+
+        /* * ===============================================
+         * 元件樣式
+         * ===============================================
+         */
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            transition: transform 0.1s;
+        }
+        .card:active { transform: scale(0.98); }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--text-main);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .page-title {
+            font-size: 26px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            color: var(--text-main);
+        }
+        .sub-page-title {
+            font-size: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            padding-top: 10px;
+        }
+
+        .back-button {
+            position: absolute;
+            top: 45px; left: 20px;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--primary-color);
+            cursor: pointer;
+            z-index: 40;
+        }
+
+        /* * ===============================================
+         * Cardif NEXT 特有元件
+         * ===============================================
+         */
+        
+        /* 虛擬錢包進度條 */
+        .wallet-card {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            padding: 24px;
+        }
+        .wallet-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px; }
+        .wallet-amount { font-size: 32px; font-weight: 700; }
+        .wallet-target { font-size: 14px; opacity: 0.9; }
+        .progress-bg { background: rgba(255,255,255,0.3); height: 8px; border-radius: 4px; overflow: hidden; margin-top: 8px; }
+        .progress-fill { background: #fff; height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+        .wallet-action { 
+            margin-top: 16px; 
+            background: rgba(255,255,255,0.2); 
+            border: 1px solid rgba(255,255,255,0.5); 
+            color: white; 
+            padding: 8px 16px; 
+            border-radius: 20px; 
+            font-size: 13px; 
+            text-align: center;
+            cursor: pointer;
+        }
+
+        /* AI 消費洞察卡片 */
+        .insight-card {
+            border-left: 5px solid var(--accent-color);
+        }
+        .insight-highlight { color: var(--accent-color); font-weight: bold; }
+        
+        /* 夢想防護網 */
+        .shield-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+        .shield-icon { font-size: 30px; margin-right: 15px; }
+        .shield-text { font-size: 13px; color: var(--text-sub); }
+        .shield-text strong { display: block; color: var(--text-main); font-size: 15px; margin-bottom: 4px; }
+
+        /* 導航列 */
+        .nav-bar {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            height: 70px;
+            background: #fff;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding-bottom: 10px;
+            z-index: 20;
+        }
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center;
+            color: #95a5a6; cursor: pointer;
+            font-size: 10px;
+        }
+        .nav-item.active { color: var(--primary-color); }
+        .nav-item span { font-size: 22px; margin-bottom: 4px; }
+
+        /* 投資/KYC 選項 */
+        .risk-option {
+            border: 2px solid #eee;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: all 0.2s;
+        }
+        .risk-option.selected {
+            border-color: var(--primary-color);
+            background-color: #e8f8f5;
+        }
+        .risk-icon { font-size: 24px; margin-right: 12px; }
+
+        /* Cardif Pass QR */
+        .pass-card {
+            background: white;
+            text-align: center;
+            padding: 30px 20px;
+            border-radius: 20px;
+            border: 2px dashed var(--primary-color);
+        }
+        #qrcode { margin: 20px auto; }
+        .pass-status { 
+            display: inline-block; 
+            background: #e8f8f5; 
+            color: var(--primary-color); 
+            padding: 4px 12px; 
+            border-radius: 12px; 
+            font-size: 12px; 
+            margin-bottom: 10px; 
+        }
+
+        /* 階梯式獎勵 */
+        .reward-tier-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            color: white;
+            margin-bottom: 4px;
+        }
+        .tier-1 { background: #95a5a6; }
+        .tier-2 { background: linear-gradient(90deg, #f1c40f, #f39c12); }
+        .reward-item.locked { opacity: 0.6; filter: grayscale(1); pointer-events: none; }
+        .lock-icon { font-size: 16px; margin-left: 5px; }
+
+        /* Chart 容器 */
+        .chart-container { height: 200px; width: 100%; position: relative; }
+        .chart-legend { display: flex; justify-content: space-around; font-size: 12px; margin-top: 10px; }
+
+        /* 共用按鈕 */
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-outline {
+            background: transparent;
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        /* 聊天室微調 */
+        .chat-container { flex-grow: 1; overflow-y: auto; padding: 15px; }
+        .chat-bubble { max-width: 80%; padding: 12px; border-radius: 16px; margin-bottom: 10px; font-size: 14px; line-height: 1.4; }
+        .chat-bubble.bot { background: #fff; color: #333; border-bottom-left-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .chat-bubble.user { background: var(--primary-color); color: white; align-self: flex-end; border-bottom-right-radius: 4px; margin-left: auto; }
+        .chat-input-bar { height: 60px; background: #fff; display: flex; align-items: center; padding: 0 15px; border-top: 1px solid #eee; }
+
+    </style>
+</head>
+<body>
+
+    <div class="phone-mockup">
+        <div class="screen">
+
+            <div id="page-home" class="page active">
+                <div class="page-title" style="display: flex; justify-content: space-between; align-items: center;">
+                    Cardif NEXT
+                    <div style="font-size: 12px; background: #e8f8f5; color: var(--primary-color); padding: 4px 8px; border-radius: 12px;">準客戶</div>
+                </div>
+
+                <div class="card wallet-card" data-target="page-invest">
+                    <div class="wallet-header">
+                        <div class="wallet-target">目標: $3,000 / 月</div>
+                        <div style="font-size: 20px;">🏦</div>
+                    </div>
+                    <div class="wallet-amount">$ 1,250</div>
+                    <div class="progress-bg">
+                        <div class="progress-fill" style="width: 41%;"></div>
+                    </div>
+                    <div style="font-size: 12px; margin-top: 5px; opacity: 0.8;">虛擬錢包累積中 (尚未扣款)</div>
+                    
+                    <div class="wallet-action" id="trigger-ach">
+                        ⚡ 本月已存滿？點此發動 ACH 轉入投資
+                    </div>
+                </div>
+
+                <div class="section-title">AI 消費洞察 <span style="font-size: 12px; color: var(--accent-color);">新發現!</span></div>
+                <div class="card insight-card" data-target="page-analysis">
+                    <div style="font-size: 15px; margin-bottom: 8px;">
+                        ☕ <strong>本月「手搖飲 & 外送」支出警示</strong>
+                    </div>
+                    <p style="font-size: 13px; color: var(--text-sub); margin: 0 0 10px 0;">
+                        您本月已花費 <span class="insight-highlight">$4,500</span> 在非必要飲食，比同儕高出 20%。
+                    </p>
+                    <div style="background: #fdf0e6; padding: 10px; border-radius: 8px; font-size: 12px; color: #d35400;">
+                        💡 <strong>AI 建議：</strong> 若省下 50% 用於 Cardif NEXT 投資，10 年後預計可累積 $320,000。
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="section-title">🛡️ 夢想防護網 (壽險)</div>
+                    <div class="shield-container">
+                        <div class="shield-icon" style="color: var(--primary-color);">🔰</div>
+                        <div class="shield-text">
+                            <strong>夢想達成率保障：100%</strong>
+                            目標：10 年存 100 萬 <br>
+                            現況：存款 20 萬 + <span style="color: var(--primary-color);">保險理賠 80 萬</span>
+                        </div>
+                    </div>
+                    <button class="btn-outline" data-target="page-invest" style="margin-top: 10px; font-size: 12px; padding: 8px;">調整防護目標</button>
+                </div>
+
+                <div class="card" style="background: linear-gradient(90deg, #2c3e50, #4ca1af); color: white; cursor: pointer;" data-target="page-pass">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: bold; font-size: 16px;">Cardif Pass 通關碼</div>
+                            <div style="font-size: 12px; opacity: 0.8;">前往分行一鍵開戶</div>
+                        </div>
+                        <div style="font-size: 24px;">🚀</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-analysis" class="page">
+                <div class="page-title">消費分析</div>
+                
+                <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-weight: bold;">☁️ 雲端發票</div>
+                        <div style="font-size: 12px; color: green;">● 已連線 (手機條碼 /6R...QE)</div>
+                    </div>
+                    <button style="padding: 6px 12px; border-radius: 15px; border: 1px solid #ccc; background: white;">設定</button>
+                </div>
+
+                <div class="card">
+                    <div class="section-title">本月支出類別</div>
+                    <div class="chart-container">
+                        <canvas id="expenseChart"></canvas>
+                    </div>
+                    <div style="margin-top: 15px; text-align: center;">
+                        <button class="btn-primary" style="background: var(--text-main); font-size: 14px;" onclick="alert('開啟手動記帳視窗')">✏️ 手動補登消費</button>
+                    </div>
+                </div>
+
+                <div class="section-title">非必要支出明細 (AI 標籤)</div>
+                <div class="card" style="padding: 0;">
+                    <div style="padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
+                        <span>🥤 50嵐 - 珍珠奶茶</span>
+                        <span style="color: red;">-$ 65</span>
+                    </div>
+                    <div style="padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
+                        <span>🛵 UberEats - 晚餐</span>
+                        <span style="color: red;">-$ 280</span>
+                    </div>
+                    <div style="padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
+                        <span>🎮 Steam - 遊戲儲值</span>
+                        <span style="color: red;">-$ 1,200</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-invest" class="page">
+                <div class="page-title">微型投資配置</div>
+
+                <div class="card">
+                    <div class="section-title">風險屬性檢測 (KYC)</div>
+                    <p style="font-size: 13px; color: #7f8c8d; margin-bottom: 15px;">AI 將根據您的選擇推薦最適合的法巴基金組合。</p>
+                    
+                    <div class="risk-option" onclick="selectRisk(this, 'conservative')">
+                        <div class="risk-icon">🐢</div>
+                        <div>
+                            <div style="font-weight: bold;">保守型</div>
+                            <div style="font-size: 12px; color: #7f8c8d;">以保本為主，接受低波動</div>
+                        </div>
+                    </div>
+                    <div class="risk-option selected" onclick="selectRisk(this, 'steady')">
+                        <div class="risk-icon">⚖️</div>
+                        <div>
+                            <div style="font-weight: bold;">穩健型 (建議)</div>
+                            <div style="font-size: 12px; color: #7f8c8d;">追求資產穩健增長</div>
+                        </div>
+                    </div>
+                    <div class="risk-option" onclick="selectRisk(this, 'aggressive')">
+                        <div class="risk-icon">🚀</div>
+                        <div>
+                            <div style="font-weight: bold;">積極型</div>
+                            <div style="font-size: 12px; color: #7f8c8d;">追求高報酬，可承受波動</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" id="portfolio-card" style="border: 1px solid var(--primary-color);">
+                    <div class="section-title">📈 AI 推薦組合：穩健成長號</div>
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <span style="background: #e8f8f5; color: var(--primary-color); padding: 4px 8px; border-radius: 4px; font-size: 12px;">法巴能源轉型</span>
+                        <span style="background: #e8f8f5; color: var(--primary-color); padding: 4px 8px; border-radius: 4px; font-size: 12px;">全球科技</span>
+                    </div>
+                    <div class="chart-container" style="height: 150px;">
+                         <canvas id="fundChart"></canvas>
+                    </div>
+                    <p style="font-size: 10px; color: #999; margin-top: 10px;">*投資具風險，過去績效不代表未來獲利。</p>
+                    <button class="btn-primary" data-target="page-pass">選定此組合 (下一步)</button>
+                </div>
+            </div>
+
+            <div id="page-rewards" class="page">
+                <div class="page-title">財商任務 & 獎勵</div>
+
+                <div class="section-title">每日任務 (賺 Cardif 幣)</div>
+                <div class="card" style="background: #fdfefe;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+                        <div style="display: flex; align-items: center;">
+                            <span style="font-size: 24px; margin-right: 10px;">📰</span>
+                            <div>
+                                <div style="font-weight: bold; font-size: 14px;">閱讀財經快訊 (0/1)</div>
+                                <div style="font-size: 12px; color: #7f8c8d;">+50 幣</div>
+                            </div>
+                        </div>
+                        <button style="padding: 6px 12px; background: var(--primary-color); color: white; border: none; border-radius: 15px; font-size: 12px;">Go</button>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center;">
+                            <span style="font-size: 24px; margin-right: 10px;">📝</span>
+                            <div>
+                                <div style="font-weight: bold; font-size: 14px;">填寫風險問卷 (1/1)</div>
+                                <div style="font-size: 12px; color: #7f8c8d;">+100 幣</div>
+                            </div>
+                        </div>
+                        <button style="padding: 6px 12px; background: #bdc3c7; color: white; border: none; border-radius: 15px; font-size: 12px;">已完成</button>
+                    </div>
+                </div>
+
+                <div class="section-title">
+                    獎勵兌換
+                    <span style="font-size: 12px; background: #f39c12; color: white; padding: 2px 6px; border-radius: 4px;">目前等級: Tier 1</span>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="card" style="text-align: center; padding: 15px; margin: 0;">
+                        <div class="reward-tier-badge tier-1">Tier 1</div>
+                        <div style="font-size: 32px;">🥚</div>
+                        <div style="font-size: 14px; font-weight: bold; margin: 5px 0;">超商茶葉蛋</div>
+                        <div style="font-size: 12px; color: var(--primary-color);">200 幣</div>
+                    </div>
+                    
+                    <div class="card reward-item locked" style="text-align: center; padding: 15px; margin: 0;">
+                        <div class="reward-tier-badge tier-2">Tier 2 (Cardif 之友)</div>
+                        <div style="font-size: 32px;">📺</div>
+                        <div style="font-size: 14px; font-weight: bold; margin: 5px 0;">Netflix 折抵 <span class="lock-icon">🔒</span></div>
+                        <div style="font-size: 12px; color: var(--primary-color);">1500 幣</div>
+                    </div>
+
+                    <div class="card reward-item locked" style="text-align: center; padding: 15px; margin: 0;">
+                        <div class="reward-tier-badge tier-2">Tier 2 (Cardif 之友)</div>
+                        <div style="font-size: 32px;">🎵</div>
+                        <div style="font-size: 14px; font-weight: bold; margin: 5px 0;">Spotify 折抵 <span class="lock-icon">🔒</span></div>
+                        <div style="font-size: 12px; color: var(--primary-color);">1500 幣</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-settings" class="page">
+                <div class="page-title">設定</div>
+                <div class="card" data-target="page-pass">
+                    <div class="section-title">🚀 Cardif Pass (O2O)</div>
+                    <div style="font-size: 13px;">查看我的數位通關碼</div>
+                </div>
+                <div class="card">
+                    <div class="section-title">帳戶綁定</div>
+                    <div style="padding: 10px 0; border-bottom: 1px solid #eee;">☁️ 財政部電子發票 (已綁定)</div>
+                    <div style="padding: 10px 0;">🏦 銀行交割帳戶 (未設定)</div>
+                </div>
+            </div>
+
+            <div id="page-pass" class="page sub-page">
+                <div class="back-button" data-target="page-home">&lsaquo; 返回</div>
+                <div class="sub-page-title">Cardif Pass 數位通關</div>
+                
+                <div class="pass-card">
+                    <div class="pass-status">資料已加密打包</div>
+                    <h3 style="margin: 10px 0;">王小明 (準客戶)</h3>
+                    <div style="font-size: 13px; color: #7f8c8d;">KYC: 穩健型 | 預選: 穩健成長號</div>
+                    
+                    <div id="qrcode"></div>
+                    
+                    <p style="font-size: 12px; color: #7f8c8d; line-height: 1.5;">
+                        請至法巴合作銀行臨櫃出示此碼。<br>
+                        理專掃描後將自動帶入您的資料，<br>
+                        <strong>免填單，快速成交！</strong>
+                    </p>
+                </div>
+                <div style="text-align: center; margin-top: 20px; font-size: 12px; color: #bdc3c7;">
+                    Security Secured by AES-256
+                </div>
+            </div>
+
+            <div id="page-chatbot" class="page sub-page" style="display: flex; flex-direction: column; background: #f0f2f5; padding: 0;">
+                 <div style="background: white; padding: 45px 20px 10px 20px; border-bottom: 1px solid #ddd; display: flex; align-items: center;">
+                     <div class="back-button" data-target="page-home" style="position: static; margin-right: 15px;">&lsaquo;</div>
+                     <div style="font-weight: bold; font-size: 16px;">Cardif AI 助理</div>
+                 </div>
+                 <div class="chat-container">
+                     <div class="chat-bubble bot">您好！我是您的 Cardif NEXT 助理。</div>
+                     <div class="chat-bubble bot">我發現您這個月在「遊戲儲值」花費較高 ($1,200)，建議您可以將這筆錢轉入「穩健成長組合」，預計年化報酬率 5%。</div>
+                     <div class="chat-bubble user">好，幫我試算如果每個月存這筆錢？</div>
+                     <div class="chat-bubble bot">沒問題！若每月定期定額 $1,200，假設年報酬 5%，10 年後將累積約 $186,000。這足夠您去一趟歐洲旅遊了！✈️</div>
+                 </div>
+                 <div class="chat-input-bar">
+                     <input type="text" placeholder="輸入訊息..." style="flex: 1; border: none; outline: none; font-size: 14px;">
+                     <button style="background: none; border: none; font-size: 20px; color: var(--primary-color);">➤</button>
+                 </div>
+            </div>
+
+            <div class="nav-bar">
+                <div class="nav-item active" data-page="page-home">
+                    <span>🏠</span><div>首頁</div>
+                </div>
+                <div class="nav-item" data-page="page-analysis">
+                    <span>📊</span><div>分析</div>
+                </div>
+                <div class="nav-item" data-page="page-invest">
+                    <span>📈</span><div>投資</div>
+                </div>
+                <div class="nav-item" data-page="page-rewards">
+                    <span>🎁</span><div>任務</div>
+                </div>
+                <div class="nav-item" data-page="page-settings">
+                    <span>⚙️</span><div>設定</div>
+                </div>
+            </div>
+            
+            <div style="position: absolute; bottom: 85px; right: 20px; width: 50px; height: 50px; background: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; z-index: 50;" data-target="page-chatbot">🤖</div>
+
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // --- 導航邏輯 ---
+            const pages = document.querySelectorAll('.page');
+            const navItems = document.querySelectorAll('.nav-item');
+            
+            // 通用跳轉函式
+            window.navigateTo = function(pageId) {
+                // 隱藏所有頁面
+                pages.forEach(p => {
+                    p.classList.remove('active');
+                    p.style.display = 'none'; // 重置 display
+                });
+                
+                // 顯示目標頁面
+                const target = document.getElementById(pageId);
+                if(target) {
+                    if (target.classList.contains('fullscreen-page')) {
+                        target.style.display = 'flex';
+                    } else if (pageId === 'page-chatbot') {
+                         target.style.display = 'flex';
+                    } else {
+                        target.style.display = 'block';
+                    }
+                    // 強制 reflow 確保 transition (如有)
+                    void target.offsetWidth; 
+                    target.classList.add('active');
+                    
+                    // 特殊處理：如果是 Cardif Pass 頁面，生成 QR Code
+                    if(pageId === 'page-pass') {
+                        generateQRCode();
+                    }
+                    
+                    // 特殊處理：如果是分析頁或投資頁，繪製圖表
+                    if(pageId === 'page-analysis') drawExpenseChart();
+                    if(pageId === 'page-invest') drawFundChart();
+                }
+
+                // 更新導航列狀態
+                navItems.forEach(item => {
+                    if(item.getAttribute('data-page') === pageId) {
+                        item.classList.add('active');
+                    } else {
+                        item.classList.remove('active');
+                    }
+                });
+            };
+
+            // 綁定點擊事件 (Data-target)
+            document.body.addEventListener('click', function(e) {
+                const target = e.target.closest('[data-target]');
+                if(target) {
+                    const pageId = target.getAttribute('data-target');
+                    navigateTo(pageId);
+                }
+                
+                // 綁定導航列點擊
+                const navItem = e.target.closest('.nav-item');
+                if(navItem) {
+                    const pageId = navItem.getAttribute('data-page');
+                    navigateTo(pageId);
+                }
+            });
+
+            // --- 2.2 虛擬零錢包邏輯 ---
+            const triggerAchBtn = document.getElementById('trigger-ach');
+            if(triggerAchBtn) {
+                triggerAchBtn.addEventListener('click', function() {
+                    alert('【模擬 ACH 扣款】\n已成功從您的銀行帳戶扣款 $3,000 至 Cardif 投資帳戶！\n\n(現實中此動作需經用戶授權)');
+                    // 重置進度條示意
+                    document.querySelector('.progress-fill').style.width = '0%';
+                    document.querySelector('.wallet-amount').innerText = '$ 0';
+                });
+            }
+
+            // --- 2.3 KYC 選擇邏輯 ---
+            window.selectRisk = function(element, type) {
+                // 移除其他選中狀態
+                document.querySelectorAll('.risk-option').forEach(el => el.classList.remove('selected'));
+                element.classList.add('selected');
+                
+                const portfolioTitle = document.querySelector('#portfolio-card .section-title');
+                if(type === 'conservative') portfolioTitle.innerText = '📈 AI 推薦組合：安穩護盾號';
+                if(type === 'steady') portfolioTitle.innerText = '📈 AI 推薦組合：穩健成長號';
+                if(type === 'aggressive') portfolioTitle.innerText = '📈 AI 推薦組合：積極火箭號';
+                
+                // 重繪圖表以示區別 (模擬)
+                drawFundChart(); 
+            };
+
+            // --- 4.1 Cardif Pass QR Code ---
+            function generateQRCode() {
+                const qrContainer = document.getElementById("qrcode");
+                qrContainer.innerHTML = ""; // 清空舊的
+                new QRCode(qrContainer, {
+                    text: "CARDIF-NEXT-USER-ID-8825252-KYC-STEADY", // 模擬打包的資料
+                    width: 128,
+                    height: 128,
+                    colorDark : "#00915a",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+            }
+
+            // --- Chart.js 繪圖 ---
+            let expenseChartInstance = null;
+            function drawExpenseChart() {
+                const ctx = document.getElementById('expenseChart').getContext('2d');
+                if(expenseChartInstance) expenseChartInstance.destroy();
+                
+                expenseChartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['飲食 (必要)', '手搖飲/外送 (非必要)', '交通', '娛樂/遊戲', '其他'],
+                        datasets: [{
+                            data: [35, 15, 10, 25, 15],
+                            backgroundColor: ['#bdc3c7', '#e74c3c', '#95a5a6', '#f39c12', '#bdc3c7'] // 紅色標示非必要
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+            
+            let fundChartInstance = null;
+            function drawFundChart() {
+                const ctx = document.getElementById('fundChart');
+                if(!ctx) return;
+                if(fundChartInstance) fundChartInstance.destroy();
+
+                fundChartInstance = new Chart(ctx.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: ['2020', '2021', '2022', '2023', '2024'],
+                        datasets: [{
+                            label: '累積報酬率 %',
+                            data: [10, 15, 12, 22, 28], // 模擬數據
+                            borderColor: '#00915a',
+                            backgroundColor: 'rgba(0, 145, 90, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: { x: { display: false }, y: { display: false } }
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

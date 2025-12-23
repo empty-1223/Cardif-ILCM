@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Start 智富起點 (v14 - 理財版)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* * ===============================================
+         * 基本設定 & 手機外框 (保持原樣)
+         * ===============================================
+         */
+        :root {
+            --primary-color: #007aff; /* 法巴藍 */
+            --primary-dark: #0056b3;
+            --light-gray: #f4f7f6;
+            --border-color: #e9ecef;
+            --text-dark: #333;
+            --text-light: #888;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+            background: #e9e9e9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding-top: 40px;
+            padding-bottom: 40px;
+            height: 100vh;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: rgba(0,0,0,0.05);
+        }
+
+        .phone-mockup {
+            width: 375px;
+            height: 812px;
+            background: #fff;
+            border: 16px solid #333;
+            border-radius: 40px;
+            box-shadow: 0 19px 38px rgba(0,0,0,0.30), 0 15px 12px rgba(0,0,0,0.22);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .phone-mockup::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 210px;
+            height: 30px;
+            background: #333;
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+            z-index: 10;
+        }
+
+        /* * ===============================================
+         * 螢幕 & 頁面切換邏輯 (保持原樣)
+         * ===============================================
+         */
+        .screen {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: var(--light-gray);
+        }
+        
+        .page {
+            width: 100%;
+            height: 100%;
+            padding: 40px 18px 80px 18px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            display: none;
+            position: absolute;
+            background-color: var(--light-gray);
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .page.active {
+            display: block;
+        }
+        
+        .page.sub-page {
+            padding: 40px 18px 40px 18px; 
+            z-index: 30;
+            background-color: #ffffff;
+        }
+        
+        #page-chatbot, #page-support-chat {
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+            padding: 0;
+            background-color: #ffffff;
+        }
+        
+        .page.fullscreen-page {
+            padding: 40px 18px;
+            z-index: 40;
+            display: none; 
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+        }
+        .page.fullscreen-page.active {
+            display: flex; 
+        }
+
+        /* * ===============================================
+         * 元件樣式 (保持原樣)
+         * ===============================================
+         */
+        .back-button {
+            position: absolute;
+            top: 45px;
+            left: 18px;
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--primary-color);
+            cursor: pointer;
+            padding: 8px;
+            margin: -8px;
+            z-index: 35;
+        }
+        .page.sub-page.white-bg .back-button,
+        #page-travel-recommendation .back-button {
+             background-color: #fff; 
+        }
+
+        .fab {
+            position: absolute;
+            bottom: 90px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            z-index: 15;
+            cursor: pointer;
+            transition: all 0.15s ease-out;
+        }
+        .fab:active {
+            transform: scale(0.95);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .page.sub-page.active ~ .fab,
+        .page.fullscreen-page.active ~ .fab {
+            display: none;
+        }
+
+        .nav-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 70px;
+            background: #ffffff;
+            border-top: 1px solid #ddd;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding-bottom: 10px;
+            font-size: 10px;
+            color: var(--text-light);
+            z-index: 20;
+        }
+        .page.sub-page.active ~ .nav-bar,
+        .page.fullscreen-page.active ~ .nav-bar {
+            display: none;
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.1s ease-out;
+        }
+        .nav-item span { font-size: 24px; }
+        .nav-item.active { color: var(--primary-color); }
+        .nav-item:active { transform: scale(0.9); }
+
+        .card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #111;
+        }
+        .page-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            color: #000;
+            padding-top: 10px;
+        }
+        .page-title.sub-page-title {
+            padding-top: 45px;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 20px;
+            flex-shrink: 0;
+            z-index: 30;
+            padding-left: 18px;
+            padding-right: 18px;
+            box-sizing: border-box;
+            width: 100%;
+        }
+        
+         #page-chatbot .page-title.sub-page-title,
+         #page-support-chat .page-title.sub-page-title {
+             margin-bottom: 10px; 
+         }
+        
+        .clickable-list-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 4px;
+            margin: 0 -4px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 15px;
+            cursor: pointer;
+            transition: background-color 0.15s ease-out, transform 0.1s ease-out;
+            border-radius: 8px;
+        }
+        .clickable-list-item:last-child { border-bottom: none; }
+        .clickable-list-item:active {
+            background-color: var(--border-color);
+            transform: scale(0.98);
+        }
+        .clickable-list-item .title { display: flex; align-items: center; font-weight: 500; }
+        .clickable-list-item .title span { font-size: 20px; margin-right: 12px; color: var(--primary-color); }
+        .clickable-list-item .value { color: var(--text-light); font-size: 14px; }
+        .clickable-list-item .arrow { font-size: 16px; color: #adb5bd; }
+        
+        .details-link-container { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-color); text-align: right; }
+        .details-link { color: var(--primary-color); text-decoration: none; font-size: 13px; font-weight: 500; transition: opacity 0.1s ease-out; cursor: pointer; }
+        .details-link:active { opacity: 0.6; }
+
+        /* * ===============================================
+         * 首頁卡片樣式 (微調配色)
+         * ===============================================
+         */
+        .assistant-card { background: #e0f0ff; border: 1px solid #b0d0ff; cursor: pointer; transition: all 0.15s ease-out; }
+        .assistant-card:active { transform: scale(0.98); box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
+        .assistant-card h3 { margin: 0 0 10px 0; color: var(--primary-dark); font-size: 16px; display: flex; align-items: center; }
+        .assistant-card h3 span { font-size: 20px; margin-right: 8px; }
+        .assistant-card p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text-dark); }
+        .assistant-card a { font-weight: bold; color: var(--primary-color); text-decoration: none; }
+        .assistant-card a:active { opacity: 0.6; }
+
+        .premium-value { background: linear-gradient(135deg, #28a745, #218838); /* 改為金錢綠 */ color: white; text-align: center; padding: 25px 20px; }
+        .premium-value h4 { margin: 0 0 10px 0; font-size: 18px; font-weight: 500; opacity: 0.9; }
+        .premium-value .value { font-size: 36px; font-weight: bold; margin: 0 0 10px 0; line-height: 1; }
+        .premium-value .description { font-size: 13px; line-height: 1.5; opacity: 0.9; }
+
+        .health-score h4 { margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: #333; }
+        .health-item { font-size: 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .status-ok { color: #28a745; font-weight: bold; }
+        .status-warn { color: #fd7e14; font-weight: bold; }
+        .health-item .task-progress { font-weight: bold; color: var(--primary-color); }
+
+        .coverage-dashboard .section-title { margin-bottom: 20px; }
+        .coverage-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .coverage-item { background: #f8f9fa; border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; text-align: center; cursor: pointer; transition: all 0.15s ease-out; }
+        .coverage-item:active { transform: scale(0.95); box-shadow: 0 2px 4px rgba(0,0,0,0.08); background-color: var(--border-color); }
+        .coverage-item .icon { font-size: 28px; margin-bottom: 8px; }
+        .coverage-item .title { font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--text-dark); }
+        .coverage-item .status { font-size: 12px; }
+        .status-good { color: #28a745; } .status-review { color: #fd7e14; } .status-plan { color: var(--primary-color); } .status-urgent { color: #dc3545; }
+
+        .financial-planning { background: #f8f9fa; border: 1px solid var(--border-color); }
+        .financial-planning .section-title { margin-bottom: 0; }
+        .financial-planning .plan-item { padding-left: 0; padding-right: 0; }
+        
+        /* * ===============================================
+         * 任務頁樣式
+         * ===============================================
+         */
+        .streak-card { background: linear-gradient(135deg, #ffc107, #fd7e14); color: var(--text-dark); text-align: center; padding: 25px 20px; cursor: pointer; transition: all 0.15s ease-out; }
+        .streak-card:active { transform: scale(0.98); box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
+        .streak-card .icon { font-size: 36px; line-height: 1; }
+        .streak-card h3 { margin: 10px 0 5px 0; font-size: 22px; font-weight: 700; }
+        .streak-card p { margin: 0; font-size: 14px; opacity: 0.9; }
+
+        .task-card { background: #f8f9fa; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+        .task-card.daily { border-left: 5px solid var(--primary-color); }
+        .task-card.weekly { border-left: 5px solid #fd7e14; }
+        .task-card.event { border-left: 5px solid #6f42c1; cursor: pointer; transition: all 0.15s ease-out; }
+        .task-card.event:active { transform: scale(0.98); background-color: #f1f3f5; }
+        .task-card h4 { margin: 0 0 16px 0; font-size: 16px; font-weight: 600; }
+        
+        .task-item { font-size: 14px; margin-bottom: 4px; cursor: pointer; padding: 8px; margin-left: -8px; margin-right: -8px; border-radius: 8px; transition: background-color 0.15s ease-out; }
+        .task-item:active { background-color: var(--border-color); }
+        .task-item:last-child { margin-bottom: 0; }
+        .task-item .progress-bar { width: 100%; height: 8px; background: var(--border-color); border-radius: 4px; margin-top: 5px; overflow: hidden; }
+        .task-item .progress-fill { height: 100%; background: var(--primary-color); border-radius: 4px; }
+
+        .reward-item { display: flex; align-items: center; font-size: 14px; margin-bottom: 8px; cursor: pointer; padding: 8px; margin-left: -8px; margin-right: -8px; border-radius: 8px; transition: background-color 0.15s ease-out; }
+        .reward-item:active { background-color: var(--border-color); }
+        .reward-item:last-child { margin-bottom: 0; }
+        .reward-item span { font-size: 20px; margin-right: 10px; }
+        
+        /* * ===============================================
+         * 資產/保單頁樣式
+         * ===============================================
+         */
+        .policy-summary-card { background: linear-gradient(135deg, #17a2b8, #138496); color: white; text-align: center; }
+        .policy-summary-card h3 { margin: 0 0 8px 0; font-size: 18px; font-weight: 500; opacity: 0.9; }
+        .policy-summary-card .policy-count { font-size: 36px; font-weight: bold; margin-bottom: 8px; line-height: 1; }
+        
+        .policy-category { margin-bottom: 16px; }
+        .policy-category-header { background: #f8f9fa; border: 1px solid var(--border-color); padding: 16px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background-color 0.15s ease-out, transform 0.1s ease-out; }
+        .policy-category-header:active { background-color: var(--border-color); transform: scale(0.985); }
+        .policy-category-header .title { font-size: 16px; font-weight: 600; display: flex; align-items: center; }
+        .policy-category-header .title span { font-size: 22px; margin-right: 10px; }
+        .policy-category-header .status { font-size: 14px; }
+        
+        .policy-gap-card { background: #fffbe6; border: 1px solid #ffeeba; display: flex; align-items: center; padding: 16px; cursor: pointer; transition: all 0.15s ease-out; }
+        .policy-gap-card:active { transform: scale(0.98); background-color: #fff3cd; }
+        .policy-gap-card .icon { font-size: 24px; margin-right: 12px; color: #fd7e14; }
+        .policy-gap-card .text { font-size: 14px; line-height: 1.5; }
+        .policy-gap-card .text strong { color: #000; }
+        .policy-gap-card .text a { color: var(--primary-color); font-weight: 600; text-decoration: none; }
+        .policy-gap-card .text a:active { opacity: 0.6; }
+
+        /* * ===============================================
+         * 設定頁 & 其他 (保持原樣)
+         * ===============================================
+         */
+        .settings-group { background: #fff; border-radius: 12px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+        .settings-item { padding-left: 16px; padding-right: 16px; margin: 0; border-radius: 0; }
+        .settings-item .title span { color: var(--text-dark); }
+        .settings-switch-item { display: flex; justify-content: space-between; align-items: center; padding: 16px; font-size: 15px; border-bottom: 1px solid var(--border-color); }
+        .settings-switch-item:last-child { border-bottom: none; }
+        .settings-switch-item .title { display: flex; align-items: center; font-weight: 500; }
+        .settings-switch-item .title span { font-size: 20px; margin-right: 12px; color: var(--text-dark); }
+        .settings-switch-item .description {
+            font-size: 12px;
+            color: var(--text-light);
+            padding-left: 32px;
+            margin-top: -8px;
+            padding-bottom: 10px;
+        }
+
+        .switch { position: relative; display: inline-block; width: 50px; height: 28px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; border-radius: 28px; transition: .4s; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; border-radius: 50%; transition: .4s; }
+        input:checked + .slider { background-color: #28a745; }
+        input:checked + .slider:before { transform: translateX(22px); }
+
+        .logout-btn { background: #dc3545; color: white; text-align: center; font-weight: 600; border-radius: 12px; padding: 16px; cursor: pointer; transition: background-color 0.2s, transform 0.1s ease-out; }
+        .logout-btn:active { background: #c82333; transform: scale(0.98); }
+
+        /* 聊天室 & 其他樣式... */
+        .chat-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 10px 18px;
+        }
+        
+        .chat-bubble { max-width: 80%; padding: 12px 16px; border-radius: 20px; line-height: 1.5; font-size: 15px; margin-bottom: 12px; }
+        .chat-bubble.bot { background-color: var(--border-color); color: #000; align-self: flex-start; border-bottom-left-radius: 4px; }
+        .chat-bubble.user { background-color: var(--primary-color); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+        
+        .chat-input-bar { 
+            position: relative;
+            height: 70px; 
+            background: #fff; 
+            border-top: 1px solid #ddd; 
+            display: flex; 
+            align-items: center; 
+            padding: 10px 18px 25px 18px;
+            box-sizing: border-box; 
+            flex-shrink: 0;
+        }
+        
+        .chat-input { flex-grow: 1; height: 40px; border: 1px solid #ccc; border-radius: 20px; padding: 0 15px; font-size: 15px; }
+        .chat-send-btn { margin-left: 10px; background: none; border: none; font-size: 24px; color: var(--primary-color); cursor: pointer; }
+        
+         .report-summary-card { background: #e6f7ff; border: 1px solid #91d5ff; text-align: center; }
+         .report-summary-card .score { font-size: 48px; font-weight: 700; color: var(--primary-dark); line-height: 1; }
+         .report-summary-card .score-label { font-size: 16px; font-weight: 600; color: var(--primary-dark); margin-bottom: 15px; }
+         .report-summary-card .description { font-size: 14px; line-height: 1.6; }
+         .chart-container {
+            width: 100%;
+            height: 200px;
+            margin-top: 10px;
+         }
+         .doughnut-chart-container {
+            width: 100%;
+            max-width: 250px;
+            height: 250px;
+            margin: 10px auto 0 auto;
+         }
+
+        .logout-screen { text-align: center; }
+        .login-again-btn { background: #fff; color: var(--primary-dark); font-weight: 600; border-radius: 12px; padding: 16px 30px; cursor: pointer; transition: all 0.15s ease-out; text-decoration: none; font-size: 16px; }
+        
+        .faq-item { background: #fff; border-radius: 12px; margin-bottom: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); overflow: hidden; }
+        .faq-item-header { padding: 18px; font-weight: 600; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .faq-item-header::after { content: '+'; font-size: 20px; color: var(--primary-color); transition: transform 0.3s ease; }
+        .faq-item.active .faq-item-header::after { transform: rotate(45deg); }
+        .faq-item-body { padding: 0 18px 18px 18px; font-size: 14px; line-height: 1.6; color: #555; max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out, padding 0.3s ease-out; }
+        .faq-item.active .faq-item-body { max-height: 200px; }
+        
+        .rewards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .reward-card { background: #fff; border: 1px solid var(--border-color); border-radius: 12px; padding: 0; text-align: center; cursor: pointer; transition: all 0.15s ease-out; overflow: hidden; }
+        .reward-card:active { transform: scale(0.96); box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
+        .reward-card .icon { font-size: 48px; margin: 20px 0 10px 0; }
+        .reward-card .title { font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--text-dark); }
+        .reward-card .cost { font-size: 13px; color: var(--primary-color); font-weight: 500; margin-bottom: 15px; }
+
+         .form-group { margin-bottom: 20px; }
+         .form-group label { font-size: 14px; font-weight: 500; color: #555; display: block; margin-bottom: 8px; }
+         .form-group input { width: 100%; height: 44px; padding: 0 15px; font-size: 15px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
+         .form-button { background: var(--primary-color); color: white; width: 100%; height: 48px; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.15s ease-out; }
+
+    </style>
+</head>
+<body>
+
+    <div class="phone-mockup">
+        
+        <div class="screen">
+
+            <div id="page-home" class="page active"> 
+                <div class="card assistant-card" data-target="page-travel-recommendation"> 
+                    <h3><span>🤖</span> AI 理財助理 提醒您</h3>
+                    <p>
+                        王先生，AI 偵測到您上個月的「外送支出」偏高，建議您參加「無痛存錢挑戰」，將省下的錢轉入 ETF 連結基金。
+                        <a href="#" data-target="page-travel-recommendation" 
+                           data-title="市場洞察" 
+                           data-product-name="科技趨勢 ETF 連結" 
+                           data-product-icon="📈">點此查看建議方案 &raquo;
+                        </a>
+                    </p>
+                </div>
+                
+                <div class="main-metrics-container">
+                    <div class="card premium-value">
+                        <h4>投資體驗金 / 回饋點數</h4>
+                        <div class="value">3,150 點</div>
+                        <p class="description">
+                            本月累積的財富積分，可兌換 <strong>$150 投資手續費折抵</strong> 或 <strong>星巴克券</strong>。
+                        </p>
+                    </div>
+
+                    <div class="card health-score">
+                        <h4>FQ 財商成長指數</h4>
+                        <div class="health-item">
+                            <span>今日閱讀 (財經早報)</span>
+                            <span class="status-ok">1 / 1 篇 &checkmark;</span>
+                        </div>
+                        <div class="health-item">
+                            <span>記帳連續天數</span>
+                            <span class="status-warn">5 天 (加油!)</span>
+                        </div>
+                        <div class="health-item">
+                            <span>本週理財測驗</span>
+                            <span class="task-progress">1 / 3</span>
+                        </div>
+                        <div class="details-link-container">
+                            <a class="details-link" data-target="page-health-report">點我查看資產成長報告 &raquo;</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card coverage-dashboard">
+                    <div class="section-title">資產配置儀表板</div>
+                    <div class="coverage-grid">
+                        <div class="coverage-item" data-target="page-coverage-detail" 
+                             data-title="緊急預備金" 
+                             data-product-name="活存/貨幣基金" 
+                             data-product-icon="💰">
+                            <div class="icon">💰</div>
+                            <div class="title">緊急預備金</div>
+                            <div class="status status-good">水位充足</div>
+                        </div>
+                        <div class="coverage-item" data-target="page-coverage-detail" 
+                             data-title="增長型資產 (ETF)"
+                             data-product-name="環球科技基金"
+                             data-product-icon="📈">
+                            <div class="icon">📈</div>
+                            <div class="title">增長型 (ETF)</div>
+                            <div class="status status-good">建議加碼</div>
+                        </div>
+                        <div class="coverage-item" data-target="page-coverage-detail" 
+                             data-title="壽險保障"
+                             data-product-name="安家30 (壽險)"
+                             data-product-icon="👨‍👩‍👧‍👦">
+                            <div class="icon">☂️</div>
+                            <div class="title">壽險保障</div>
+                            <div class="status status-good">保障充足</div>
+                        </div>
+                        <div class="coverage-item" data-target="page-coverage-detail" 
+                             data-title="退休現金流"
+                             data-product-name="長青收益型保單"
+                             data-product-icon="🏖️">
+                            <div class="icon">🏖️</div>
+                            <div class="title">退休現金流</div>
+                            <div class="status status-urgent">缺口極大</div>
+                        </div>
+                        <div class="coverage-item" data-target="page-coverage-detail" 
+                             data-title="投資型保單 (ILP)"
+                             data-product-name="法巴投資型保單 A"
+                             data-product-icon="🏦">
+                            <div class="icon">🏦</div>
+                            <div class="title">投資型保單</div>
+                            <div class="status status-plan">定期定額中</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card financial-planning">
+                    <div class="section-title">財務工具箱</div>
+                    <div class="clickable-list-item plan-item" data-target="page-financial-education">
+                        <div class="title"><span>🎓</span> 複利計算機</div>
+                        <div class="arrow">&rsaquo;</div>
+                    </div>
+                    <div class="clickable-list-item plan-item" data-target="page-financial-retirement">
+                        <div class="title"><span>🏖️</span> 退休金試算</div>
+                        <div class="arrow">&rsaquo;</div>
+                    </div>
+                    <div class="clickable-list-item plan-item" data-target="page-financial-investment">
+                        <div class="title"><span>📈</span> 機器人理財顧問</div>
+                        <div class="arrow">&rsaquo;</div>
+                    </div>
+                </div>
+            </div> 
+            
+            <div id="page-tasks" class="page"> 
+                 <div class="page-title">🎯 財商任務 (Earn)</div>
+                
+                <div class="card streak-card" data-target="page-rewards-store">
+                    <div class="icon">🔥</div>
+                    <h3>連續記帳 5 天</h3>
+                    <p>做得好！繼續保持，解鎖 Netflix 一個月免費！</p>
+                </div>
+                <div class="card task-card daily">
+                    <h4>每日任務</h4>
+                    <div class="task-item">
+                        <div>閱讀每日財經早報 (1/1)</div>
+                        <div class="progress-bar"><div class="progress-fill" style="width: 100%;"></div></div>
+                    </div>
+                    <div class="task-item">
+                        <div>完成本日記帳 (已完成)</div>
+                        <div class="progress-bar"><div class="progress-fill" style="width: 100%;"></div></div>
+                    </div>
+                </div>
+                <div class="card task-card event" data-target="page-task-event-detail">
+                    <h4>特別挑戰：第一桶金養成</h4>
+                    <div class="task-item">
+                        <div>連續 30 天不喝手搖飲 (12/30)</div>
+                        <div class="progress-bar"><div class="progress-fill" style="width: 40%; background-color: #6f42c1;"></div></div>
+                    </div>
+                </div>
+                <div class="card task-card weekly">
+                    <h4>每週挑戰</h4>
+                    <div class="task-item">
+                        <div>3 次理財小測驗 (1/3)</div>
+                        <div class="progress-bar"><div class="progress-fill" style="width: 33.3%; background-color: #fd7e14;"></div></div>
+                    </div>
+                    <div class="task-item">
+                        <div>模擬調整投資組合 (0/1)</div>
+                        <div class="progress-bar"><div class="progress-fill" style="width: 0%; background-color: #fd7e14;"></div></div>
+                    </div>
+                </div>
+                <div class="card task-rewards">
+                    <h4>任務獎勵 </h4>
+                    <div class="reward-item" data-target="page-rewards-store"><span>☕</span> 星巴克/7-11 咖啡券 (尚需 200 點)</div>
+                    <div class="reward-item" data-target="page-rewards-store"><span>🎬</span> Netflix 訂閱 (熱門兌換)</div>
+                    <div class="details-link-container">
+                        <a class="details-link" data-target="page-rewards-store">前往獎品商城 &raquo;</a>
+                    </div>
+                </div>
+            </div> 
+
+            <div id="page-policies" class="page"> 
+                <div class="page-title">💰 我的資產</div>
+                <div class="card policy-summary-card">
+                    <h3>總資產淨值</h3>
+                    <div class="policy-count">$ 328,500</div>
+                    <p class="description">AI 持續為您監控資產波動</p>
+                </div>
+                <div class="card policy-gap-card" data-target="page-coverage-detail" data-title="退休現金流" data-product-name="長青收益型保單" data-product-icon="🏖️">
+                    <div class="icon">💡</div>
+                    <div class="text">
+                        <strong>AI 發現配置缺口：</strong>
+                        根據您的消費習慣，您目前的「退休資產累積速度」嚴重落後。
+                        <a href="#" data-target="page-coverage-detail" data-title="退休現金流" data-product-name="長青收益型保單" data-product-icon="🏖️">查看 AI 建議 &raquo;</a>
+                    </div>
+                </div>
+                <div class="section-title">資產類別</div>
+                <div class="policy-category"><div class="policy-category-header" data-target="page-policy-list" data-title="投資型保單 (ILP)"><div class="title"><span>📈</span> 投資型保單 (ILP)</div><div class="status status-plan">1 份 (定期定額)</div></div></div>
+                <div class="policy-category"><div class="policy-category-header" data-target="page-policy-list" data-title="海外 ETF"><div class="title"><span>🌎</span> 海外 ETF</div><div class="status status-good">績效 +12.5%</div></div></div>
+                <div class="policy-category"><div class="policy-category-header" data-target="page-policy-list" data-title="壽險保障"><div class="title"><span>☂️</span> 壽險保障</div><div class="status status-good">保障充足</div></div></div>
+                <div class="policy-category"><div class="policy-category-header" data-target="page-policy-list" data-title="現金存款"><div class="title"><span>💰</span> 現金存款</div><div class="status status-good">水位充足</div></div></div>
+            </div> 
+
+            <div id="page-settings" class="page"> 
+                 <div class="page-title">⚙️ 設定</div>
+                <div class="section-title">帳戶與資料</div>
+                <div class="settings-group">
+                    <div class="clickable-list-item settings-item" data-target="page-settings-profile">
+                        <div class="title"><span>👤</span> 個人投資屬性 (KYC)</div><div class="arrow">&rsaquo;</div>
+                    </div>
+
+                    <div class="clickable-list-item settings-item" data-target="page-settings-family">
+                        <div class="title"><span>👨‍👩‍👧‍👦</span> 家庭成員管理</div><div class="arrow">&rsaquo;</div>
+                    </div>
+
+                    <div class="clickable-list-item settings-item" data-target="page-settings-security">
+                        <div class="title"><span>🔒</span> 密碼與安全性</div><div class="arrow">&rsaquo;</div>
+                    </div>
+                </div>
+
+                <div class="section-title">連結服務 (Open Banking)</div>
+                <div class="settings-group">
+                    <div class="settings-switch-item">
+                        <div class="title"><span>🏦</span> 連結銀行帳戶 (記帳)</div>
+                        <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+                    </div>
+
+                    <div class="settings-switch-item">
+                        <div class="title"><span>💳</span> 信用卡消費分析</div>
+                        <label class="switch"><input type="checkbox"><span class="slider"></span></label>
+                    </div>
+
+                    <div class="clickable-list-item settings-item" data-target="page-settings-data">
+                        <div class="title"><span>🏥</span> 健保資料</div><div class="value">已連結</div>
+                    </div>
+
+                    <div class="clickable-list-item settings-item" data-target="page-settings-upload">
+                        <div class="title"><span>📤</span> 舊保單上傳</div>
+                        <div class="arrow">&rsaquo;</div>
+                    </div>
+                </div>
+
+                <div class="section-title">支援服務</div>
+                <div class="settings-group">
+                    <div class="clickable-list-item settings-item" data-target="page-chatbot">
+                        <div class="title"><span>🤖</span> AI 理財助理</div>
+                        <div class="arrow">&rsaquo;</div>
+                    </div>
+
+                    <div class="clickable-list-item settings-item" data-target="page-support-chat">
+                        <div class="title"><span>💬</span> 聯繫投資顧問</div>
+                        <div class="arrow">&rsaquo;</div>
+                    </div>
+
+                    <div class="clickable-list-item settings-item" data-target="page-settings-faq">
+                        <div class="title"><span>❓</span> 常見問題 (FAQ)</div>
+                        <div class="arrow">&rsaquo;</div>
+                    </div>
+                </div>
+                
+                <div class="logout-btn" data-target="page-logout">登出</div>
+            </div> 
+            
+            <div id="page-chatbot" class="page sub-page"> 
+                <div class="back-button" data-target="page-home">&lsaquo; 返回</div> 
+                <div class="page-title sub-page-title">🤖 AI 理財助理</div>
+                <div class="chat-container">
+                    <div class="chat-bubble bot">您好，王先生！我是您的 AI 理財教練。</div>
+                    <div class="chat-bubble bot">您可以問我「如何開始定期定額？」或「幫我分析上個月飲料花了多少錢」。</div>
+                    <div class="chat-bubble user">我想要存第一桶金，但不知道怎麼開始。</div>
+                    <div class="chat-bubble bot">這是很好的目標！根據您的收入，我建議您嘗試「333 法則」。</div>
+                    <div class="chat-bubble bot">
+                        <b>[AI 智能推薦]</b> 我為您挑選了一檔適合新手的「全球科技 ETF 連結型保單」。<br>
+                        每月只要 $3,000 即可開始，且包含基本壽險保障。
+                    </div>
+                    <div class="chat-bubble user">聽起來不錯，但我怕賠錢。</div>
+                    <div class="chat-bubble bot">
+                        我理解您的擔憂。這檔產品屬於「穩健型」，且過去 5 年平均年化報酬率為 8%。
+                        <br><br>
+                        如果您願意，我可以幫您安排一位「真人投資顧問」進行 15 分鐘線上諮詢？
+                    </div>
+                </div>
+                <div class="chat-input-bar"><input type="text" class="chat-input" placeholder="輸入訊息..."><button class="chat-send-btn">➤</button></div>
+            </div>
+            
+            <div id="page-support-chat" class="page sub-page"> 
+                <div class="back-button" data-target="page-settings">&lsaquo; 返回</div>
+                 <div class="page-title sub-page-title">真人投資顧問</div>
+                 <div class="chat-container">
+                    <div class="chat-bubble bot" style="background-color: #e0f0ff; text-align: left; color: #333; border-bottom-left-radius: 20px;">
+                        <strong style="color: var(--primary-dark);">--- AI 助理交接摘要 ---</strong><br>
+                        <b>客戶:</b> 王先生 (25歲)<br>
+                        <b>需求:</b> 想存第一桶金，風險偏好保守<br>
+                        <b>摘要:</b> 客戶對 ETF 連結型保單有興趣，但擔憂市場波動風險。<br>
+                    </div>
+                    <div class="chat-bubble bot">
+                        王先生您好，我是投資顧問 089 號。
+                    </div>
+                    <div class="chat-bubble bot">
+                        我看到 AI 提到您想了解穩健的投資方案。請問您每個月預計能提撥多少預算呢？
+                    </div>
+                </div>
+                <div class="chat-input-bar"><input type="text" class="chat-input" placeholder="輸入訊息..."><button class="chat-send-btn">➤</button></div>
+            </div>
+            
+            <div id="page-travel-recommendation" class="page sub-page white-bg">
+                <div class="back-button" data-target="page-home">&lsaquo; 返回首頁</div>
+                <div class="page-title sub-page-title">📉 市場洞察與消費分析</div>
+
+                <div class="card">
+                    <div class="section-title">AI 消費分析</div>
+                    <p style="font-size: 14px; line-height: 1.6;">
+                        王先生，您好：
+                    </p>
+                    <p style="font-size: 14px; line-height: 1.6;">
+                        AI 分析您的信用卡帳單發現，您上個月在「餐飲外送」支出達 $4,500，比平均值高出 20%。
+                    </p>
+                     <p style="font-size: 14px; line-height: 1.6;">
+                        <strong>微痛理財建議：</strong> 如果能將這筆錢的一半 ($2,250) 轉作定期定額投資，30 年後可能變成 $200 萬的退休金！
+                    </p>
+                </div>
+
+                <div class="card">
+                    <div class="section-title">推薦方案</div>
+                     <div class="clickable-list-item plan-item" data-target="page-coverage-detail" data-title="增長型資產" data-product-name="科技趨勢 ETF 連結" data-product-icon="📈">
+                        <div class="title">
+                            <span>📈</span> 
+                            <span>小額投資方案 (月付$3000)</span>
+                        </div>
+                        <div class="arrow">&rsaquo;</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-health-report" class="page sub-page white-bg">
+                <div class="back-button" data-target="page-home">&lsaquo; 返回首頁</div>
+                <div class="page-title sub-page-title">詳細資產報告</div>
+                
+                <div class="card report-summary-card">
+                    <div class="score">82</div>
+                    <div class="score-label">您的 FQ 財商分數</div>
+                    <p class="description">
+                        擊敗了 82% 的同齡用戶！您的閱讀習慣良好，但需注意「退休規劃」起步較晚。
+                    </p>
+                </div>
+                <div class="card">
+                    <div class="section-title">資產模擬成長曲線 (預測)</div>
+                    <div class="chart-container">
+                        <canvas id="sleepChart"></canvas> </div>
+                </div>
+                <div class="card">
+                    <div class="section-title">近半年消費支出分析</div>
+                    <div class="chart-container">
+                        <canvas id="stepsChart"></canvas> </div>
+                </div>
+            </div>
+            
+            <div id="page-coverage-detail" class="page sub-page white-bg">
+                <div class="back-button" data-target="page-home">&lsaquo; 返回首頁</div>
+                <div id="coverage-detail-title" class="page-title sub-page-title">資產缺口分析</div>
+                
+                <div class="card policy-gap-card">
+                    <div class="icon">💡</div>
+                    <div class="text">
+                        <strong id="coverage-gap-text">AI 發現「退休規劃」嚴重不足：</strong>
+                        根據複利效應，現在開始每月投入 $5,000，65歲時可多領 300 萬。
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="section-title">目前資產配置</div>
+                    <div class="doughnut-chart-container">
+                        <canvas id="coverageChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="section-title">AI 推薦理財工具</div>
+                    <div class="clickable-list-item plan-item">
+                        <div class="title">
+                            <span id="reco-product-icon">🏖️</span> 
+                            <span id="reco-product-name">長青收益型投資保單</span>
+                        </div>
+                        <div class="arrow">&rsaquo;</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-rewards-store" class="page sub-page">
+                <div class="back-button" data-target="page-tasks">&lsaquo; 返回任務</div>
+                <div class="page-title sub-page-title">🎁 點數商城</div>
+                <div class="rewards-grid">
+                    <div class="reward-card"><div class="icon">☕</div><div class="title">星巴克/7-11 券</div><div class="cost">500 點</div></div>
+                    <div class="reward-card"><div class="icon">💰</div><div class="title">手續費 0 元券</div><div class="cost">1000 點</div></div>
+                    <div class="reward-card"><div class="icon">🎬</div><div class="title">Netflix 一個月</div><div class="cost">2500 點</div></div>
+                    <div class="reward-card"><div class="icon">🎵</div><div class="title">Spotify 會員</div><div class="cost">2500 點</div></div>
+                </div>
+            </div>
+
+            <div id="page-task-event-detail" class="page sub-page white-bg">
+                <div class="back-button" data-target="page-tasks">&lsaquo; 返回任務</div>
+                <div class="page-title sub-page-title">第一桶金養成</div>
+                <div class="card"><p>與全體會員一起挑戰本月連續 30 天減少非必要支出，存下第一桶金！達成目標即可獲得 500 點，並有機會抽中 iPad。</p></div>
+            </div>
+
+            <div id="page-policy-list" class="page sub-page white-bg">
+                <div class="back-button" data-target="page-policies">&lsaquo; 返回</div>
+                <div id="policy-list-title" class="page-title sub-page-title">資產明細</div>
+                <div class="settings-group" id="policy-list-container"></div>
+            </div>
+            
+            <div id="page-financial-education" class="page sub-page white-bg"><div class="back-button" data-target="page-home">&lsaquo; 返回首頁</div><div class="page-title sub-page-title">🎓 複利計算機</div><div class="card"><p>AI 正在計算您的投資複利效應...</p></div></div>
+            <div id="page-financial-retirement" class="page sub-page white-bg"><div class="back-button" data-target="page-home">&lsaquo; 返回首頁</div><div class="page-title sub-page-title">🏖️ 退休金試算</div><div class="card"><p>AI 正在為您規劃退休金流...</p></div></div>
+            <div id="page-financial-investment" class="page sub-page white-bg"><div class="back-button" data-target="page-home">&lsaquo; 返回首頁</div><div class="page-title sub-page-title">📈 機器人理財</div><div class="card"><p>AI 正在分析您的風險屬性...</p></div></div>
+
+            <div id="page-settings-profile" class="page sub-page white-bg">
+                <div class="back-button" data-target="page-settings">&lsaquo; 返回</div><div class="page-title sub-page-title">個人資料 (KYC)</div>
+                <div class="card">
+                    <div class="form-group"><label>投資風險屬性</label><input type="text" value="穩健型 (Balanced)"></div>
+                    <div class="form-group"><label>Email</label><input type="email" value="demo@email.com"></div>
+                    <button class="form-button">儲存變更</button>
+                </div>
+            </div>
+            
+            <div id="page-mock-bank-detail" class="page sub-page white-bg"><div class="back-button" data-target="page-settings">&lsaquo; 返回</div><div class="page-title sub-page-title">🏦 阿里山銀行</div><div class="card"><p>已連結作為記帳與扣款帳戶。</p></div></div>
+            <div id="page-mock-bank-detail-cc" class="page sub-page white-bg"><div class="back-button" data-target="page-settings">&lsaquo; 返回</div><div class="page-title sub-page-title">💳 信用卡</div><div class="card"><p>已連結消費分析。</p></div></div>
+            <div id="page-mock-bank-add" class="page sub-page white-bg"><div class="back-button" data-target="page-settings">&lsaquo; 返回</div><div class="page-title sub-page-title">新增帳戶</div><div class="card"><p>模擬新增流程...</p></div></div>
+
+            <div id="page-logout" class="page fullscreen-page">
+                <div class="logout-screen">
+                    <div class="icon">👋</div>
+                    <h2>您已登出</h2>
+                    <p>Smart Start - 陪你聰明理財</p>
+                    <a class="login-again-btn" data-target="page-home">重新登入</a>
+                </div>
+            </div>
+        
+            <div class="fab" data-target="page-chatbot">
+                🤖
+            </div>
+        </div> 
+
+        <div class="nav-bar">
+            <div class="nav-item active" data-page="page-home">
+                <span>🏠</span>
+                <div>首頁</div>
+            </div>
+            <div class="nav-item" data-page="page-tasks">
+                <span>🎯</span>
+                <div>任務</div>
+            </div>
+            <div class="nav-item" data-page="page-policies">
+                <span>💰</span>
+                <div>資產</div>
+            </div>
+            <div class="nav-item" data-page="page-settings">
+                <span>⚙️</span>
+                <div>設定</div>
+            </div>
+        </div>
+
+    </div> 
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // --- 全局變數 ---
+        const navItems = document.querySelectorAll('.nav-item');
+        const pages = document.querySelectorAll('.page');
+        const screen = document.querySelector('.screen');
+        
+        let chartInstances = {}; // 用一個物件來管理所有圖表
+
+        // --- 1. 核心導航功能 (保持不變) ---
+        function showPage(pageId, pageData = {}) {
+            if (!pageId) { pageId = 'page-home'; }
+            
+            let targetPage = document.getElementById(pageId);
+            
+            if (!targetPage) {
+                targetPage = document.getElementById('page-home');
+                pageId = 'page-home';
+            }
+            
+            // (A) 隱藏所有頁面
+            pages.forEach(page => {
+                 page.classList.remove('active');
+                 page.style.display = 'none'; 
+            });
+            
+            // (B) 顯示目標頁面
+            if (pageId === 'page-chatbot' || pageId === 'page-support-chat') {
+                targetPage.style.display = 'flex';
+            } else {
+                targetPage.style.display = 'block';
+            }
+            targetPage.classList.add('active'); 
+            
+            // (C) 處理滾動行為
+            if (pageId === 'page-chatbot' || pageId === 'page-support-chat') {
+                const chatContainer = targetPage.querySelector('.chat-container');
+                if (chatContainer) {
+                    setTimeout(() => {
+                        chatContainer.scrollTop = chatContainer.scrollHeight;
+                    }, 0); 
+                }
+            } else {
+                targetPage.scrollTop = 0; 
+            }
+            
+            // (D) 處理底部導航列
+            if (!targetPage.classList.contains('sub-page') && !targetPage.classList.contains('fullscreen-page')) {
+                navItems.forEach(nav => {
+                    nav.classList.toggle('active', nav.getAttribute('data-page') === pageId);
+                });
+            }
+            
+            // (E) 繪製圖表或更新內容 (★ 修改邏輯以符合理財情境)
+            try {
+                if (pageId === 'page-health-report') {
+                    drawStaticCharts(); 
+                }
+                if (pageId === 'page-coverage-detail') {
+                    const title = pageData.title || '退休現金流';
+                    const productName = pageData.productName || '長青收益型保單';
+                    const productIcon = pageData.productIcon || '🏖️';
+                    
+                    const titleElement = document.getElementById('coverage-detail-title');
+                    const gapTextElement = document.getElementById('coverage-gap-text');
+                    const recoIconElement = document.getElementById('reco-product-icon');
+                    const recoNameElement = document.getElementById('reco-product-name');
+
+                    if (titleElement) titleElement.innerText = `資產缺口：${title}`;
+                    if (gapTextElement) gapTextElement.innerText = `AI 發現「${title}」累積速度不足...`;
+                    if (recoIconElement) recoIconElement.innerText = productIcon;
+                    if (recoNameElement) recoNameElement.innerText = `推薦：${productName}`;
+                    
+                    drawCoverageChart(title); 
+                }
+                
+                if (pageId === 'page-policy-list') {
+                    const title = pageData.title || '資產明細';
+                    const policyTitleElement = document.getElementById('policy-list-title');
+                    if (policyTitleElement) policyTitleElement.innerText = title;
+                    drawPolicyList(title); 
+                }
+            } catch (error) {
+                console.error(`Error while preparing page ${pageId}:`, error);
+            }
+        }
+
+        // --- 2. 事件委派 ---
+        screen.addEventListener('click', function(e) {
+            const targetElement = e.target.closest('[data-target]');
+            if (targetElement) {
+                e.preventDefault(); 
+                e.stopPropagation(); 
+                
+                const targetPageId = targetElement.getAttribute('data-target');
+                const pageData = {
+                    title: targetElement.getAttribute('data-title'),
+                    productName: targetElement.getAttribute('data-product-name'),
+                    productIcon: targetElement.getAttribute('data-product-icon')
+                };
+                
+                showPage(targetPageId, pageData); 
+                return;
+            }
+            
+            const faqHeader = e.target.closest('.faq-item-header');
+            if (faqHeader) {
+                faqHeader.parentElement.classList.toggle('active');
+                return; 
+            }
+        });
+        
+        // --- 3. 導航點擊 ---
+        navItems.forEach(item => {
+            item.addEventListener('click', function() {
+                const targetPageId = this.getAttribute('data-page');
+                showPage(targetPageId);
+            });
+        });
+
+        // --- 4. 繪製圖表函數 (★ 修改數據為財務相關) --- 
+        function drawStaticCharts() {
+            try {
+                // 原本是 Sleep Chart -> 改為「資產成長模擬」
+                const sleepCanvas = document.getElementById('sleepChart');
+                if (sleepCanvas) {
+                    if (chartInstances['sleepChart']) chartInstances['sleepChart'].destroy();
+                    const sleepCtx = sleepCanvas.getContext('2d');
+                    chartInstances['sleepChart'] = new Chart(sleepCtx, { 
+                        type: 'line', 
+                        data: { 
+                            labels: ['25歲', '30歲', '35歲', '40歲', '45歲', '50歲', '55歲'], 
+                            datasets: [{ 
+                                label: '預估資產 (萬)', 
+                                data: [10, 50, 120, 250, 400, 650, 1000], 
+                                borderColor: 'rgba(40, 167, 69, 1)', 
+                                backgroundColor: 'rgba(40, 167, 69, 0.1)', 
+                                fill: true, 
+                                tension: 0.4 
+                            }] 
+                        }, 
+                        options: { responsive: true, maintainAspectRatio: false } 
+                    });
+                } else { console.warn("Canvas 'sleepChart' not found."); }
+
+                // 原本是 Steps Chart -> 改為「消費支出」
+                const stepsCanvas = document.getElementById('stepsChart');
+                if (stepsCanvas) {
+                    if (chartInstances['stepsChart']) chartInstances['stepsChart'].destroy();
+                    const stepsCtx = stepsCanvas.getContext('2d');
+                    chartInstances['stepsChart'] = new Chart(stepsCtx, { 
+                        type: 'bar', 
+                        data: { 
+                            labels: ['5月', '6月', '7月', '8月', '9月', '10月'], 
+                            datasets: [{ 
+                                label: '每月支出 ($)', 
+                                data: [15000, 18000, 14500, 21000, 16000, 15500], 
+                                backgroundColor: 'rgba(255, 193, 7, 0.8)' 
+                            }] 
+                        }, 
+                        options: { responsive: true, maintainAspectRatio: false } 
+                    });
+                } else { console.warn("Canvas 'stepsChart' not found."); }
+            } catch (error) { console.error("Error drawing static charts:", error); }
+        }
+
+        function drawCoverageChart(category) {
+            try {
+                const coverageCanvas = document.getElementById('coverageChart');
+                if (!coverageCanvas) { console.warn("Canvas 'coverageChart' not found."); return; }
+                const ctx = coverageCanvas.getContext('2d');
+                let chartData;
+                
+                // 模擬不同類別的資產配置狀況
+                if (category.includes("緊急") || category.includes("現金")) {
+                     chartData = [100, 0]; // 滿
+                } else if (category.includes("壽險")) {
+                     chartData = [80, 20];
+                } else if (category.includes("ETF") || category.includes("增長")) {
+                     chartData = [30, 70]; // 缺口大
+                } else {
+                     chartData = [10, 90]; // 缺口極大 (退休)
+                }
+
+                if (chartInstances['coverageChart']) { chartInstances['coverageChart'].destroy(); }
+                chartInstances['coverageChart'] = new Chart(ctx, { 
+                    type: 'doughnut', 
+                    data: { 
+                        labels: ['目前水位', '目標缺口'], 
+                        datasets: [{ 
+                            data: chartData, 
+                            backgroundColor: ['#28a745', '#dc3545'], // 綠色 vs 紅色
+                            borderColor: ['#fff', '#fff'], borderWidth: 2 
+                        }] 
+                    }, 
+                    options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom' } } } 
+                });
+            } catch (error) { console.error("Error drawing coverage chart:", error); }
+        }
+
+        function drawPolicyList(category) {
+            const container = document.getElementById('policy-list-container');
+            if (!container) return;
+            let policiesHtml = '';
+            // 模擬投資清單
+            if (category && (category.includes('ETF') || category.includes('增長'))) {
+                policiesHtml = `<div class="clickable-list-item settings-item"><div class="title"><span>📈</span> S&P 500 ETF</div><div class="value">+15%</div></div> <div class="clickable-list-item settings-item"><div class="title"><span>📈</span> 納斯達克 100</div><div class="value">+12%</div></div>`;
+            } else if (category && (category.includes('ILP') || category.includes('投資型'))) {
+                policiesHtml = `<div class="clickable-list-item settings-item"><div class="title"><span>📄</span> 法巴投資型保單 A</div><div class="value">月繳 $3000</div></div>`;
+            } else if (category && category.includes('壽險')) {
+                 policiesHtml = `<div class="clickable-list-item settings-item"><div class="title"><span>📄</span> 定期壽險</div><div class="arrow">&rsaquo;</div></div>`;
+            } else {
+                policiesHtml = `<div style="padding: 20px; text-align: center; color: #888;">尚無此類資產</div>`;
+            }
+            container.innerHTML = policiesHtml;
+        }
+
+        // --- 5. 初始載入 ---
+        const initialActivePage = document.querySelector('.page.active');
+        if (initialActivePage) {
+            const initialPageId = initialActivePage.id;
+            if (initialPageId === 'page-chatbot' || initialPageId === 'page-support-chat') {
+                initialActivePage.style.display = 'flex';
+                const chatContainer = initialActivePage.querySelector('.chat-container');
+                if (chatContainer) {
+                    setTimeout(() => { chatContainer.scrollTop = chatContainer.scrollHeight; }, 0); 
+                }
+            } else {
+                 initialActivePage.style.display = 'block';
+            }
+        } else {
+             showPage('page-home');
+        }
+        
+    });
+    </script>
+
+</body>
+</html>
